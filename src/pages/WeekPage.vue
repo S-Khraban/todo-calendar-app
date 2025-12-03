@@ -1,98 +1,131 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useTasksStore } from '@/stores/tasks';
+import { computed } from 'vue'
+import { useTasksStore } from '@/stores/tasks'
+import DateBadge from '@/components/atoms/DateBadge.vue'
+import WeekMultiDayRow from '@/components/organisms/WeekMultiDayRow.vue'
 
-const tasksStore = useTasksStore();
+const tasksStore = useTasksStore()
 
-const today = new Date();
+const toLocalIso = (d: Date) => {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
-const startOfWeek = new Date(today);
-const day = startOfWeek.getDay() || 7;
-startOfWeek.setDate(startOfWeek.getDate() - (day - 1));
+const today = new Date()
+const todayIso = toLocalIso(today)
 
-const weekDays = Array.from({ length: 7 }, (_, i) => {
-  const d = new Date(startOfWeek);
-  d.setDate(startOfWeek.getDate() + i);
-  const iso = d.toISOString().slice(0, 10);
-  const label = d.toLocaleDateString('en-US', {
-    weekday: 'short',
-    day: '2-digit',
-    month: '2-digit',
-  });
-  return { iso, label };
-});
+const startOfWeek = new Date(today)
+const weekdayIndex = startOfWeek.getDay() || 7
+startOfWeek.setDate(startOfWeek.getDate() - (weekdayIndex - 1))
+
+type WeekDay = {
+  iso: string
+  weekday: string
+  dayNumber: number
+}
+
+const weekDays: WeekDay[] = Array.from({ length: 7 }, (_, i) => {
+  const d = new Date(startOfWeek)
+  d.setDate(startOfWeek.getDate() + i)
+
+  const iso = toLocalIso(d)
+  const weekday = d.toLocaleDateString('en-US', { weekday: 'short' })
+  const dayNumber = d.getDate()
+
+  return { iso, weekday, dayNumber }
+})
+
+const weekStartIso = weekDays[0]!.iso
+const weekEndIso = weekDays[6]!.iso
 
 const tasksByDay = computed(() =>
-  weekDays.map((day) => {
-    const tasks = tasksStore.tasksByDate(day.iso).slice().sort((a, b) => {
-      const aTime = a.startTime || '00:00';
-      const bTime = b.startTime || '00:00';
-      return aTime.localeCompare(bTime);
-    });
-    return { day, tasks };
-  })
-);
+  weekDays.map(dayInfo => {
+    const tasks = tasksStore
+      .tasksByDate(dayInfo.iso)
+      .filter(task => !(task.endDate && task.endDate !== task.date))
+      .slice()
+      .sort((a, b) => {
+        const aTime = a.startTime || '00:00'
+        const bTime = b.startTime || '00:00'
+        return aTime.localeCompare(bTime)
+      })
 
-const todayIso = today.toISOString().slice(0, 10);
+    return { day: dayInfo, tasks }
+  }),
+)
 </script>
 
 <template>
   <div class="page-container">
-    <h1>
-      Weekly overview
-    </h1>
+    <h1>Weekly overview</h1>
 
-    <div
-      class="grid gap-3 text-[13px] md:grid-cols-4 lg:grid-cols-7"
-    >
+    <div class="pd4u-week-row">
+      <div
+        v-for="day in weekDays"
+        :key="day.iso"
+        class="pd4u-week-header"
+      >
+        <span
+          :class="[
+            'pd4u-week-header__weekday',
+            day.iso === todayIso ? 'text-brand-primary' : 'text-text-muted',
+          ]"
+        >
+          {{ day.weekday }}
+        </span>
+
+        <DateBadge
+          :day="day.dayNumber"
+          :is-today="day.iso === todayIso"
+          :has-tasks="tasksStore.tasksByDate(day.iso).length > 0"
+        />
+      </div>
+    </div>
+
+    <WeekMultiDayRow
+      :week-start-iso="weekStartIso"
+      :week-end-iso="weekEndIso"
+      :tasks="tasksStore.tasks"
+    />
+
+    <div class="pd4u-week-cells">
       <div
         v-for="col in tasksByDay"
         :key="col.day.iso"
-        :class="[
-          'rounded-xl p-3 border bg-app-surface flex flex-col gap-2 min-h-28 shadow-sm',
-          col.day.iso === todayIso
-            ? 'border-brand-primary bg-brand-primarySoft/60'
-            : 'border-border-soft'
-        ]"
+        class="pd4u-week-cell"
+        :class="{ 'pd4u-week-cell--today': col.day.iso === todayIso }"
       >
         <div
-          :class="[
-            'font-semibold mb-1',
-            col.day.iso === todayIso ? 'text-brand-primary' : 'text-text-primary'
-          ]"
-        >
-          {{ col.day.label }}
-        </div>
-
-        <div
           v-if="col.tasks.length === 0"
-          class="text-text-muted text-xs"
+          class="pd4u-week-empty"
         >
           No tasks
         </div>
 
         <ul
           v-else
-          class="list-none p-0 m-0 flex flex-col gap-1"
+          class="pd4u-week-tasks"
         >
           <li
             v-for="task in col.tasks"
             :key="task.id"
-            class="rounded-md px-2 py-1 bg-app-surfaceSoft"
+            class="pd4u-week-task"
           >
             <div
               v-if="task.startTime || task.endTime"
-              class="text-[11px] text-text-muted mb-0.5"
+              class="pd4u-week-task__time"
             >
               {{ task.startTime || '??:??' }} – {{ task.endTime || '...' }}
             </div>
 
             <div
               :class="[
-                'text-[13px]',
+                'pd4u-week-task__title',
                 task.status === 'done'
                   ? 'line-through text-text-muted'
-                  : 'text-text-primary'
+                  : 'text-text-primary',
               ]"
             >
               {{ task.title }}
@@ -103,3 +136,77 @@ const todayIso = today.toISOString().slice(0, 10);
     </div>
   </div>
 </template>
+
+<style scoped>
+.pd4u-week-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 6px;
+}
+
+.pd4u-week-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.pd4u-week-header__weekday {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pd4u-week-cells {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  font-size: 13px;
+}
+
+.pd4u-week-cell {
+  border-radius: 12px;
+  border: 1px solid var(--pd4u-card-border, #e5e7eb);
+  background-color: var(--pd4u-card-bg, #ffffff);
+  padding: 8px;
+  min-height: 80px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pd4u-week-cell--today {
+  border-color: #2563eb;
+  background-color: #eff6ff;
+}
+
+.pd4u-week-empty {
+  font-size: 12px;
+  color: var(--pd4u-text-muted, #6b7280);
+}
+
+.pd4u-week-tasks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pd4u-week-task {
+  border-radius: 8px;
+  padding: 4px 6px;
+  background-color: var(--pd4u-empty-bg, #f9fafb);
+}
+
+.pd4u-week-task__time {
+  font-size: 11px;
+  color: var(--pd4u-text-muted, #6b7280);
+  margin-bottom: 2px;
+}
+
+.pd4u-week-task__title {
+  font-size: 13px;
+}
+</style>

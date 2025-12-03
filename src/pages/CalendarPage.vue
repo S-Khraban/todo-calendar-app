@@ -28,10 +28,24 @@ const monthDays = computed(() => {
   if (weekDay === 0) weekDay = 7;
   const daysBefore = weekDay - 1;
 
+  const nextMonthFirst = new Date(year, month + 1, 1);
+  const daysInMonth = Math.round(
+    (nextMonthFirst.getTime() - firstOfMonth.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  const totalCellsRaw = daysBefore + daysInMonth;
+  const rows = Math.max(4, Math.ceil(totalCellsRaw / 7));
+  const totalCells = rows * 7;
+
+  const firstCellDate = new Date(firstOfMonth);
+  firstCellDate.setDate(firstOfMonth.getDate() - daysBefore);
+
   const cells = [];
-  for (let i = 0; i < 42; i += 1) {
-    const d = new Date(firstOfMonth);
-    d.setDate(firstOfMonth.getDate() - daysBefore + i);
+
+  for (let i = 0; i < totalCells; i += 1) {
+    const d = new Date(firstCellDate);
+    d.setDate(firstCellDate.getDate() + i);
+
     const iso = d.toISOString().slice(0, 10);
     const isCurrentMonth = d.getMonth() === month;
     const isToday = iso === todayIso;
@@ -69,76 +83,106 @@ const changeMonth = (delta: number) => {
 const selectDay = (iso: string) => {
   selectedDate.value = iso;
 };
+
+const goToToday = () => {
+  currentMonth.value = new Date(today.getFullYear(), today.getMonth(), 1);
+  selectedDate.value = todayIso;
+};
 </script>
 
 <template>
   <div class="page-container">
-    <h1>
-      Tasks calendar
-    </h1>
-
-    <div class="flex items-center justify-between mb-3 text-sm">
-      <button
-        type="button"
-        @click="changeMonth(-1)"
-        class="px-3 py-1.5 rounded-md border border-border-soft bg-white text-text-primary cursor-pointer hover:bg-app-surfaceSoft"
-      >
-        ‹ Previous
-      </button>
-
-      <div class="font-semibold capitalize text-text-primary">
-        {{ monthLabel }}
-      </div>
+    <div class="flex items-center justify-between mb-4 gap-3">
+      <h1 class="text-xl font-semibold text-text-primary">
+        Tasks calendar
+      </h1>
 
       <button
         type="button"
-        @click="changeMonth(1)"
-        class="px-3 py-1.5 rounded-md border border-border-soft bg-white text-text-primary cursor-pointer hover:bg-app-surfaceSoft"
+        @click="goToToday"
+        class="px-3 py-1.5 rounded-md border border-border-soft bg-white text-xs text-text-primary cursor-pointer hover:bg-app-surfaceSoft"
       >
-        Next ›
+        Today
       </button>
     </div>
 
     <div
-      class="grid grid-cols-7 gap-1 text-[13px] text-center mb-1 text-text-muted"
+      class="rounded-lg border border-border-soft bg-app-surface shadow-sm p-3 md:p-4"
     >
-      <div
-        v-for="w in weekDaysShort"
-        :key="w"
-        class="py-1"
-      >
-        {{ w }}
+      <div class="flex items-center justify-between mb-3 text-sm">
+        <button
+          type="button"
+          @click="changeMonth(-1)"
+          class="px-3 py-1.5 rounded-md border border-border-soft bg-white text-text-primary cursor-pointer hover:bg-app-surfaceSoft"
+        >
+          ‹ Previous
+        </button>
+
+        <div class="font-semibold capitalize text-text-primary text-sm md:text-base">
+          {{ monthLabel }}
+        </div>
+
+        <button
+          type="button"
+          @click="changeMonth(1)"
+          class="px-3 py-1.5 rounded-md border border-border-soft bg-white text-text-primary cursor-pointer hover:bg-app-surfaceSoft"
+        >
+          Next ›
+        </button>
+      </div>
+
+      <div class="calendar-inner">
+        <div
+          class="grid grid-cols-7 gap-1 text-[11px] md:text-[12px] text-center mb-1 text-text-muted uppercase tracking-wide"
+        >
+          <div
+            v-for="w in weekDaysShort"
+            :key="w"
+            class="py-1"
+          >
+            {{ w }}
+          </div>
+        </div>
+
+        <div class="grid grid-cols-7 gap-1">
+          <button
+            v-for="day in monthDays"
+            :key="day.iso"
+            type="button"
+            @click="selectDay(day.iso)"
+            :class="[
+              'calendar-day relative flex flex-col items-center justify-between rounded-md border text-[13px] cursor-pointer select-none transition bg-app-surface',
+              selectedDate === day.iso
+                ? 'border-2 border-brand-primary bg-brand-primarySoft/70'
+                : 'border border-border-soft',
+              day.isToday ? 'ring-1 ring-brand-primary/60' : '',
+              day.isCurrentMonth ? 'opacity-100' : 'opacity-50 bg-app-surfaceSoft'
+            ]"
+          >
+            <div class="mt-1">
+              <div
+                class="flex items-center justify-center w-7 h-7 rounded-full"
+                :class="[
+                  day.isToday && !(selectedDate === day.iso)
+                    ? 'bg-brand-primarySoft text-brand-primary'
+                    : 'text-text-primary'
+                ]"
+              >
+                {{ day.dayNumber }}
+              </div>
+            </div>
+
+            <span
+              v-if="day.hasTasks"
+              class="mb-1 w-1.5 h-1.5 rounded-full bg-brand-accent"
+            />
+          </button>
+        </div>
       </div>
     </div>
 
-    <div class="grid grid-cols-7 gap-1 text-[13px]">
-      <button
-        v-for="day in monthDays"
-        :key="day.iso"
-        type="button"
-        @click="selectDay(day.iso)"
-        :class="[
-          'relative py-1.5 pb-2 rounded-md border cursor-pointer transition bg-app-surface',
-          selectedDate === day.iso
-            ? 'border-2 border-brand-primary bg-brand-primarySoft/70'
-            : 'border border-border-soft',
-          day.isToday ? 'ring-1 ring-brand-primary/60' : '',
-          day.isCurrentMonth ? 'opacity-100' : 'opacity-60 bg-app-surfaceSoft'
-        ]"
-      >
-        <div class="text-text-primary">
-          {{ day.dayNumber }}
-        </div>
-
-        <span
-          v-if="day.hasTasks"
-          class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-brand-accent"
-        />
-      </button>
-    </div>
-
     <div class="mt-6">
-      <h2>
+      <h2 class="text-base font-semibold text-text-primary mb-2">
         Tasks for {{ selectedDate }}
       </h2>
 
@@ -165,10 +209,10 @@ const selectDay = (iso: string) => {
             class="cursor-pointer"
           />
 
-          <div class="flex-1">
+          <div class="flex-1 min-w-0">
             <div
               :class="[
-                'font-medium',
+                'font-medium truncate',
                 task.status === 'done'
                   ? 'line-through text-text-muted'
                   : 'text-text-primary'
@@ -186,7 +230,7 @@ const selectDay = (iso: string) => {
           </div>
 
           <span
-            class="text-[11px] px-2 py-0.5 rounded-full bg-brand-primarySoft text-brand-primary"
+            class="text-[11px] px-2 py-0.5 rounded-full bg-brand-primarySoft text-brand-primary shrink-0"
           >
             {{ task.category }}
           </span>
@@ -195,3 +239,15 @@ const selectDay = (iso: string) => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.calendar-inner {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+/* квадратні клітинки */
+.calendar-day {
+  aspect-ratio: 1 / 1;
+}
+</style>

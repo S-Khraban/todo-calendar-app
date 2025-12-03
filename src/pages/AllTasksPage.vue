@@ -1,78 +1,81 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { useTasksStore } from '@/stores/tasks';
-import type { TaskCategory, TaskStatus, Task } from '@/types';
+import { computed, ref } from 'vue'
+import { useTasksStore } from '@/stores/tasks'
+import type { TaskCategory, TaskStatus, Task } from '@/types'
+import Input from '@/components/atoms/Input.vue'
+import Button from '@/components/atoms/Button.vue'
+import Checkbox from '@/components/atoms/Checkbox.vue'
 
-const tasksStore = useTasksStore();
+const tasksStore = useTasksStore()
 
-const categoryFilter = ref<TaskCategory | 'all'>('all');
-const statusFilter = ref<TaskStatus | 'all'>('all');
+const categoryFilter = ref<TaskCategory | 'all'>('all')
+const statusFilter = ref<TaskStatus | 'all'>('all')
 
-const editingId = ref<string | null>(null);
-const editTitle = ref('');
-const editCategory = ref<TaskCategory>('work');
-const editStartTime = ref('');
-const editEndTime = ref('');
-const editDate = ref('');
-const editEndDate = ref('');
+const editingId = ref<string | null>(null)
+const editTitle = ref('')
+const editCategory = ref<TaskCategory>('work')
+const editStartTime = ref('')
+const editEndTime = ref('')
+const editDate = ref('')
+const editEndDate = ref('')
 
 const filteredTasks = computed(() => {
   return tasksStore.tasks
-    .filter((task) => {
+    .filter(task => {
       if (categoryFilter.value !== 'all' && task.category !== categoryFilter.value) {
-        return false;
+        return false
       }
 
       if (statusFilter.value !== 'all' && task.status !== statusFilter.value) {
-        return false;
+        return false
       }
 
-      return true;
+      return true
     })
     .slice()
     .sort((a, b) => {
       if (a.date !== b.date) {
-        return a.date.localeCompare(b.date);
+        return a.date.localeCompare(b.date)
       }
-      const aTime = a.startTime || '00:00';
-      const bTime = b.startTime || '00:00';
-      return aTime.localeCompare(bTime);
-    });
-});
+      const aTime = a.startTime || '00:00'
+      const bTime = b.startTime || '00:00'
+      return aTime.localeCompare(bTime)
+    })
+})
 
 const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-};
+  const d = new Date(date)
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = String(d.getFullYear()).slice(2)
+  return `${day}.${month}.${year}`
+}
 
 const startEdit = (task: Task) => {
-  editingId.value = task.id;
-  editTitle.value = task.title;
-  editCategory.value = task.category;
-  editStartTime.value = task.startTime || '';
-  editEndTime.value = task.endTime || '';
-  editDate.value = task.date;
-  editEndDate.value = task.endDate ?? task.date;
-};
+  editingId.value = task.id
+  editTitle.value = task.title
+  editCategory.value = task.category
+  editStartTime.value = task.startTime || ''
+  editEndTime.value = task.endTime || ''
+  editDate.value = task.date
+  editEndDate.value = task.endDate ?? task.date
+}
 
 const cancelEdit = () => {
-  editingId.value = null;
-};
+  editingId.value = null
+}
 
 const saveEdit = () => {
-  if (!editingId.value) return;
+  if (!editingId.value) return
 
-  const original = tasksStore.tasks.find((t) => t.id === editingId.value);
+  const original = tasksStore.tasks.find(t => t.id === editingId.value)
   if (!original) {
-    editingId.value = null;
-    return;
+    editingId.value = null
+    return
   }
 
-  const start = editDate.value || original.date;
-  const end = editEndDate.value || original.endDate || start;
+  const start = editDate.value || original.date
+  const end = editEndDate.value || original.endDate || start
 
   const updated: Task = {
     ...original,
@@ -82,18 +85,16 @@ const saveEdit = () => {
     endTime: editEndTime.value || undefined,
     date: start,
     endDate: end,
-  };
+  }
 
-  tasksStore.updateTask(updated);
-  editingId.value = null;
-};
+  tasksStore.updateTask(updated)
+  editingId.value = null
+}
 </script>
 
 <template>
   <div class="page-container">
-    <h1>
-      All tasks
-    </h1>
+    <h1>All tasks</h1>
 
     <div class="flex flex-wrap gap-3 mb-5 text-sm">
       <label class="flex items-center gap-1">
@@ -125,61 +126,29 @@ const saveEdit = () => {
       </label>
     </div>
 
-    <div
-      v-if="filteredTasks.length === 0"
-      class="text-text-muted text-sm"
-    >
+    <div v-if="filteredTasks.length === 0" class="text-text-muted text-sm">
       No tasks for current filters.
     </div>
 
-    <ul
-      v-else
-      class="list-none p-0 m-0 flex flex-col gap-2 text-sm"
-    >
+    <ul v-else class="list-none p-0 m-0 flex flex-col gap-2 text-sm">
       <li
         v-for="task in filteredTasks"
         :key="task.id"
         class="grid grid-cols-[auto,1fr,auto] gap-2 items-start px-3 py-2 rounded-md border border-border-soft bg-app-surface shadow-sm"
       >
-        <input
-          type="checkbox"
-          :checked="task.status === 'done'"
-          @change="tasksStore.toggleStatus(task.id)"
-          class="mt-1 cursor-pointer"
+        <Checkbox
+          :model-value="task.status === 'done'"
+          @update:model-value="() => tasksStore.toggleStatus(task.id)"
         />
 
         <div>
           <div v-if="editingId === task.id">
             <div class="flex flex-wrap gap-2 mb-2">
-              <input
-                v-model="editTitle"
-                type="text"
-                class="flex-1 min-w-52 px-2 py-1 rounded-md border border-border-soft bg-white text-sm text-text-primary focus:(outline-none border-brand-primary ring-1 ring-brand-primary/50)"
-              />
-
-              <input
-                v-model="editStartTime"
-                type="time"
-                class="w-26 px-2 py-1 rounded-md border border-border-soft bg-white text-sm focus:(outline-none border-brand-primary ring-1 ring-brand-primary/50)"
-              />
-
-              <input
-                v-model="editEndTime"
-                type="time"
-                class="w-26 px-2 py-1 rounded-md border border-border-soft bg-white text-sm focus:(outline-none border-brand-primary ring-1 ring-brand-primary/50)"
-              />
-
-              <input
-                v-model="editDate"
-                type="date"
-                class="w-38 px-2 py-1 rounded-md border border-border-soft bg-white text-sm focus:(outline-none border-brand-primary ring-1 ring-brand-primary/50)"
-              />
-
-              <input
-                v-model="editEndDate"
-                type="date"
-                class="w-38 px-2 py-1 rounded-md border border-border-soft bg-white text-sm focus:(outline-none border-brand-primary ring-1 ring-brand-primary/50)"
-              />
+              <Input v-model="editTitle" type="text" class="flex-1 min-w-52" />
+              <Input v-model="editStartTime" type="time" class="w-26" />
+              <Input v-model="editEndTime" type="time" class="w-26" />
+              <Input v-model="editDate" type="date" class="w-38" />
+              <Input v-model="editEndDate" type="date" class="w-38" />
 
               <select
                 v-model="editCategory"
@@ -194,20 +163,13 @@ const saveEdit = () => {
             </div>
 
             <div class="flex gap-2">
-              <button
-                type="button"
-                @click="saveEdit"
-                class="px-3 py-1.5 rounded-md text-xs font-medium bg-brand-primary text-white cursor-pointer hover:bg-brand-primary/90 active:translate-y-0.5 transition"
-              >
+              <Button type="button" size="sm" variant="primary" @click="saveEdit">
                 Save
-              </button>
-              <button
-                type="button"
-                @click="cancelEdit"
-                class="px-3 py-1.5 rounded-md text-xs font-medium border border-border-soft bg-app-surface cursor-pointer hover:bg-app-surfaceSoft active:translate-y-0.5 transition"
-              >
+              </Button>
+
+              <Button type="button" size="sm" variant="ghost" @click="cancelEdit">
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -217,7 +179,7 @@ const saveEdit = () => {
                 'font-medium',
                 task.status === 'done'
                   ? 'line-through text-text-muted'
-                  : 'text-text-primary'
+                  : 'text-text-primary',
               ]"
             >
               {{ task.title }}
@@ -236,28 +198,30 @@ const saveEdit = () => {
         </div>
 
         <div class="flex flex-col items-end gap-1">
-          <span
-            class="text-[11px] px-2 py-0.5 rounded-full bg-brand-primarySoft text-brand-primary"
-          >
+          <span class="text-[11px] px-2 py-0.5 rounded-full bg-brand-primarySoft text-brand-primary">
             {{ task.category }}
           </span>
 
-          <button
+          <Button
             v-if="editingId !== task.id"
             type="button"
+            size="sm"
+            variant="ghost"
+            class="border-none bg-transparent text-[11px] text-brand-primary hover:text-brand-primary/80 cursor-pointer px-0"
             @click="startEdit(task)"
-            class="border-none bg-transparent text-[11px] text-brand-primary hover:text-brand-primary/80 cursor-pointer"
           >
             Edit
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="button"
+            size="sm"
+            variant="ghost"
+            class="border-none bg-transparent text-[11px] text-rose-500 hover:text-rose-400 cursor-pointer px-0"
             @click="tasksStore.removeTask(task.id)"
-            class="border-none bg-transparent text-[11px] text-rose-500 hover:text-rose-400 cursor-pointer"
           >
             Delete
-          </button>
+          </Button>
         </div>
       </li>
     </ul>
