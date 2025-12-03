@@ -143,7 +143,7 @@ const saveEdit = () => {
       >
         <input
           type="checkbox"
-          :checked="task.status === 'done'"`
+          :checked="task.status === 'done'"
           @change="tasksStore.toggleStatus(task.id)"
           class="mt-1 cursor-pointer"
         />
