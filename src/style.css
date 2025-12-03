@@ -54,6 +54,20 @@
   --pd4u-border-subtle: #e5e7eb;
 
   --pd4u-app-bg: #f3f4f6;
+
+  /* Layout tokens */
+  --pd4u-max-width: 1400px;
+  --pd4u-min-width: 320px;
+
+  --pd4u-bp-tablet: 768px;
+  --pd4u-bp-desktop: 1200px;
+
+  --pd4u-page-padding-x-mobile: 16px;
+  --pd4u-page-padding-x-tablet: 24px;
+  --pd4u-page-padding-x-desktop: 32px;
+  --pd4u-page-padding-y: 24px;
+
+  --pd4u-grid-gap: 16px;
 }
 
 *,
@@ -68,12 +82,22 @@ body {
   padding: 0;
 }
 
+html {
+  min-width: var(--pd4u-min-width);
+}
+
 body {
   min-height: 100vh;
   font-family: var(--pd4u-font-family);
   background-color: var(--pd4u-app-bg);
   color: var(--pd4u-text-main);
 }
+
+#app {
+  min-height: 100vh;
+}
+
+/* базова типографіка й лінки */
 
 a {
   color: inherit;
@@ -82,4 +106,66 @@ a {
 
 button {
   font-family: inherit;
+}
+
+/* контейнер сторінки (можеш використовувати як utility-клас додатково до app-shell, якщо треба) */
+
+.pd4u-container {
+  width: 100%;
+  max-width: var(--pd4u-max-width);
+  margin-inline: auto;
+  padding-inline: var(--pd4u-page-padding-x-mobile);
+  padding-block: var(--pd4u-page-padding-y);
+}
+
+@media (min-width: 768px) {
+  .pd4u-container {
+    padding-inline: var(--pd4u-page-padding-x-tablet);
+  }
+}
+
+@media (min-width: 1200px) {
+  .pd4u-container {
+    padding-inline: var(--pd4u-page-padding-x-desktop);
+  }
+}
+
+/* грід-система */
+
+.pd4u-grid {
+  display: grid;
+  gap: var(--pd4u-grid-gap);
+}
+
+/* 1 колонка завжди */
+.pd4u-grid--1 {
+  grid-template-columns: 1fr;
+}
+
+/* 2 колонки: мобілка 1, з tablet — 2 */
+.pd4u-grid--2 {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .pd4u-grid--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 3 колонки: мобілка 1, tablet — 2, desktop — 3 */
+.pd4u-grid--3 {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .pd4u-grid--3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1200px) {
+  .pd4u-grid--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }

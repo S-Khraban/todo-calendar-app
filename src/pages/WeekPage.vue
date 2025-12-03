@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useTasksStore } from '@/stores/tasks'
 import DateBadge from '@/components/atoms/DateBadge.vue'
 import WeekMultiDayRow from '@/components/organisms/WeekMultiDayRow.vue'
 
 const tasksStore = useTasksStore()
+const router = useRouter()
 
 const toLocalIso = (d: Date) => {
   const year = d.getFullYear()
@@ -55,6 +57,10 @@ const tasksByDay = computed(() =>
     return { day: dayInfo, tasks }
   }),
 )
+
+const openDay = (iso: string) => {
+  router.push({ name: 'date', params: { date: iso } })
+}
 </script>
 
 <template>
@@ -66,6 +72,7 @@ const tasksByDay = computed(() =>
         v-for="day in weekDays"
         :key="day.iso"
         class="pd4u-week-header"
+        @click="openDay(day.iso)"
       >
         <span
           :class="[
@@ -96,6 +103,7 @@ const tasksByDay = computed(() =>
         :key="col.day.iso"
         class="pd4u-week-cell"
         :class="{ 'pd4u-week-cell--today': col.day.iso === todayIso }"
+        @click="openDay(col.day.iso)"
       >
         <div
           v-if="col.tasks.length === 0"
@@ -149,6 +157,7 @@ const tasksByDay = computed(() =>
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  cursor: pointer;
 }
 
 .pd4u-week-header__weekday {
@@ -173,6 +182,7 @@ const tasksByDay = computed(() =>
   display: flex;
   flex-direction: column;
   gap: 4px;
+  cursor: pointer;
 }
 
 .pd4u-week-cell--today {

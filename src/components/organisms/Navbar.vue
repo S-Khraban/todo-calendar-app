@@ -4,11 +4,19 @@ import { useRoute, RouterLink } from 'vue-router'
 const route = useRoute()
 
 const links = [
-  { to: '/today', label: 'Today' },
+  { to: '/date', label: 'Today' },
   { to: '/week', label: 'Week' },
   { to: '/calendar', label: 'Calendar' },
   { to: '/tasks', label: 'All Tasks' },
 ]
+
+const isActive = (to: string) => {
+  if (to === '/date') {
+    return route.path.startsWith('/date')
+  }
+
+  return route.path === to
+}
 </script>
 
 <template>
@@ -24,9 +32,7 @@ const links = [
           :key="link.to"
           :to="link.to"
           class="pd4u-navbar__link"
-          :class="{
-            'pd4u-navbar__link--active': route.path === link.to,
-          }"
+          :class="{ 'pd4u-navbar__link--active': isActive(link.to) }"
         >
           {{ link.label }}
         </RouterLink>
@@ -44,7 +50,7 @@ const links = [
 }
 
 .pd4u-navbar__inner {
-  max-width: 960px;
+  max-width: var(--pd4u-max-width, 1400px);
   margin: 0 auto;
   padding: 10px 16px;
 
@@ -58,8 +64,8 @@ const links = [
   font-weight: 700;
   font-size: 16px;
   letter-spacing: 0.04em;
-  color: #111827 !important; 
-  background: none !important; 
+  color: #111827 !important;
+  background: none !important;
 }
 
 .pd4u-navbar__links {

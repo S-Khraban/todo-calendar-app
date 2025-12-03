@@ -1,8 +1,8 @@
 <template>
-  <div min-h-screen bg-app-bg text-text-primary>
+  <div class="min-h-screen bg-app-bg text-text-primary">
     <Navbar />
 
-    <main class="page-container">
+    <main class="app-shell">
       <RouterView />
     </main>
   </div>
@@ -13,7 +13,24 @@ import Navbar from '@/components/organisms/Navbar.vue'
 </script>
 
 <style>
-.page-container {
-  @apply px-8 py-6 max-w-3xl mx-auto w-full;
+.app-shell {
+  @apply w-full mx-auto;
+
+  max-width: 1400px;
+  min-width: 320px;
+  padding-inline: 16px;
+  padding-block: 24px;
+}
+
+@media (min-width: 768px) {
+  .app-shell {
+    padding-inline: 24px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .app-shell {
+    padding-inline: 32px;
+  }
 }
 </style>

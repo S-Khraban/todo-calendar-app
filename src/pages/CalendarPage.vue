@@ -1,11 +1,20 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { useTasksStore } from '@/stores/tasks';
 
 const tasksStore = useTasksStore();
+const router = useRouter();
+
+const toLocalIso = (d: Date) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const today = new Date();
-const todayIso = today.toISOString().slice(0, 10);
+const todayIso = toLocalIso(today);
 
 const currentMonth = ref(new Date(today.getFullYear(), today.getMonth(), 1));
 const selectedDate = ref<string>(todayIso);
@@ -46,7 +55,7 @@ const monthDays = computed(() => {
     const d = new Date(firstCellDate);
     d.setDate(firstCellDate.getDate() + i);
 
-    const iso = d.toISOString().slice(0, 10);
+    const iso = toLocalIso(d);
     const isCurrentMonth = d.getMonth() === month;
     const isToday = iso === todayIso;
     const hasTasks = tasksStore.tasksByDate(iso).length > 0;
@@ -82,6 +91,7 @@ const changeMonth = (delta: number) => {
 
 const selectDay = (iso: string) => {
   selectedDate.value = iso;
+  router.push({ name: 'date', params: { date: iso } });
 };
 
 const goToToday = () => {
@@ -246,7 +256,6 @@ const goToToday = () => {
   margin: 0 auto;
 }
 
-/* квадратні клітинки */
 .calendar-day {
   aspect-ratio: 1 / 1;
 }

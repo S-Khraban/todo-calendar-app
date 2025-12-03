@@ -1,20 +1,14 @@
-import { createRouter, createWebHistory } from 'vue-router';
-import type { RouteRecordRaw } from 'vue-router';
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 
-import TodayPage from '../pages/TodayPage.vue';
-import CalendarPage from '../pages/CalendarPage.vue';
-import AllTasksPage from '../pages/AllTasksPage.vue';
-import WeekPage from '../pages/WeekPage.vue';
+import WeekPage from '@/pages/WeekPage.vue';
+import CalendarPage from '@/pages/CalendarPage.vue';
+import AllTasksPage from '@/pages/AllTasksPage.vue';
+import DatePage from '@/pages/TodayPage.vue'; // тут твій DatePage (колишній Today)
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: '/today',
-  },
-  {
-    path: '/today',
-    name: 'today',
-    component: TodayPage,
+    redirect: '/week',
   },
   {
     path: '/week',
@@ -27,13 +21,18 @@ const routes: RouteRecordRaw[] = [
     component: CalendarPage,
   },
   {
+    path: '/date/:date?',
+    name: 'date',
+    component: DatePage,
+  },
+  {
     path: '/tasks',
     name: 'tasks',
     component: AllTasksPage,
   },
 ];
 
-export const router = createRouter({
+const router = createRouter({
   history: createWebHistory(),
   routes,
 });
