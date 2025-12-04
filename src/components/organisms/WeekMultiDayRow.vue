@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Task } from '@/types'
+import { isoToDate, formatIsoShort } from '@/utils/date'
 
 const props = defineProps<{
   weekStartIso: string
@@ -8,21 +9,11 @@ const props = defineProps<{
   tasks: Task[]
 }>()
 
-const toDate = (iso: string) => new Date(`${iso}T00:00:00`)
-
 const diffInDays = (later: Date, earlier: Date) =>
   Math.round((later.getTime() - earlier.getTime()) / (1000 * 60 * 60 * 24))
 
-const formatDate = (iso: string) => {
-  const d = toDate(iso)
-  const day = String(d.getDate()).padStart(2, '0')
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const year = String(d.getFullYear()).slice(2)
-  return `${day}.${month}.${year}`
-}
-
-const weekStartDate = computed(() => toDate(props.weekStartIso))
-const weekEndDate = computed(() => toDate(props.weekEndIso))
+const weekStartDate = computed(() => isoToDate(props.weekStartIso))
+const weekEndDate = computed(() => isoToDate(props.weekEndIso))
 
 const longEvents = computed(() => {
   const weekStart = weekStartDate.value
@@ -31,13 +22,13 @@ const longEvents = computed(() => {
   return props.tasks
     .filter(task => task.endDate && task.endDate !== task.date)
     .filter(task => {
-      const taskStart = toDate(task.date)
-      const taskEnd = toDate(task.endDate as string)
+      const taskStart = isoToDate(task.date)
+      const taskEnd = isoToDate(task.endDate as string)
       return taskEnd >= weekStart && taskStart <= weekEnd
     })
     .map(task => {
-      const taskStart = toDate(task.date)
-      const taskEnd = toDate(task.endDate as string)
+      const taskStart = isoToDate(task.date)
+      const taskEnd = isoToDate(task.endDate as string)
 
       const clampedStart = taskStart < weekStart ? weekStart : taskStart
       const clampedEnd = taskEnd > weekEnd ? weekEnd : taskEnd
@@ -47,8 +38,8 @@ const longEvents = computed(() => {
 
       const dateRange =
         task.date === task.endDate
-          ? formatDate(task.date)
-          : `${formatDate(task.date)} – ${formatDate(task.endDate as string)}`
+          ? formatIsoShort(task.date)
+          : `${formatIsoShort(task.date)} – ${formatIsoShort(task.endDate as string)}`
 
       const hasTime = task.startTime || task.endTime
       const timeRange = hasTime

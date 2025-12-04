@@ -1,17 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import { useTasksStore } from '@/stores/tasks';
+import type { Task, TaskCategory } from '@/types';
+import TaskModal from '@/components/organisms/TaskModal.vue';
+import DayTasksList from '@/components/organisms/DayTasksList.vue';
+import { toLocalIso, formatMonthLabel } from '@/utils/date';
 
 const tasksStore = useTasksStore();
-const router = useRouter();
-
-const toLocalIso = (d: Date) => {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
 
 const today = new Date();
 const todayIso = toLocalIso(today);
@@ -19,16 +14,21 @@ const todayIso = toLocalIso(today);
 const currentMonth = ref(new Date(today.getFullYear(), today.getMonth(), 1));
 const selectedDate = ref<string>(todayIso);
 
-const monthLabel = computed(() =>
-  currentMonth.value.toLocaleDateString('en-US', {
-    month: 'long',
-    year: 'numeric',
-  })
-);
+const monthLabel = computed(() => formatMonthLabel(currentMonth.value));
 
 const weekDaysShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-const monthDays = computed(() => {
+type DayCell = {
+  iso: string;
+  dayNumber: number;
+  isCurrentMonth: boolean;
+  isToday: boolean;
+  hasInProgress: boolean;
+  hasOverdue: boolean;
+  showTodo: boolean;
+};
+
+const monthDays = computed<DayCell[]>(() => {
   const year = currentMonth.value.getFullYear();
   const month = currentMonth.value.getMonth();
   const firstOfMonth = new Date(year, month, 1);
@@ -39,7 +39,7 @@ const monthDays = computed(() => {
 
   const nextMonthFirst = new Date(year, month + 1, 1);
   const daysInMonth = Math.round(
-    (nextMonthFirst.getTime() - firstOfMonth.getTime()) / (1000 * 60 * 60 * 24)
+    (nextMonthFirst.getTime() - firstOfMonth.getTime()) / (1000 * 60 * 60 * 24),
   );
 
   const totalCellsRaw = daysBefore + daysInMonth;
@@ -49,7 +49,7 @@ const monthDays = computed(() => {
   const firstCellDate = new Date(firstOfMonth);
   firstCellDate.setDate(firstOfMonth.getDate() - daysBefore);
 
-  const cells = [];
+  const cells: DayCell[] = [];
 
   for (let i = 0; i < totalCells; i += 1) {
     const d = new Date(firstCellDate);
@@ -58,14 +58,24 @@ const monthDays = computed(() => {
     const iso = toLocalIso(d);
     const isCurrentMonth = d.getMonth() === month;
     const isToday = iso === todayIso;
-    const hasTasks = tasksStore.tasksByDate(iso).length > 0;
+
+    const tasksForDay = tasksStore.tasksByDate(iso);
+
+    const hasTodo = tasksForDay.some(t => t.status === 'todo');
+    const hasInProgress = tasksForDay.some(t => t.status === 'in_progress');
+    const hasOverdue =
+      iso < todayIso && tasksForDay.some(t => t.status !== 'done');
+
+    const showTodo = hasTodo && !hasOverdue;
 
     cells.push({
       iso,
       dayNumber: d.getDate(),
       isCurrentMonth,
       isToday,
-      hasTasks,
+      hasInProgress,
+      hasOverdue,
+      showTodo,
     });
   }
 
@@ -80,7 +90,7 @@ const selectedTasks = computed(() =>
       const aTime = a.startTime || '00:00';
       const bTime = b.startTime || '00:00';
       return aTime.localeCompare(bTime);
-    })
+    }),
 );
 
 const changeMonth = (delta: number) => {
@@ -91,12 +101,77 @@ const changeMonth = (delta: number) => {
 
 const selectDay = (iso: string) => {
   selectedDate.value = iso;
-  router.push({ name: 'date', params: { date: iso } });
 };
 
 const goToToday = () => {
   currentMonth.value = new Date(today.getFullYear(), today.getMonth(), 1);
   selectedDate.value = todayIso;
+};
+
+const isTaskModalOpen = ref(false);
+const editingTask = ref<Task | null>(null);
+const modalDate = ref<string>(selectedDate.value);
+
+type SavePayload = {
+  id?: string;
+  title: string;
+  description?: string;
+  date: string;
+  endDate?: string;
+  startTime?: string;
+  endTime?: string;
+  category: TaskCategory;
+  status: Task['status'];
+};
+
+const openCreate = () => {
+  modalDate.value = selectedDate.value;
+  editingTask.value = null;
+  isTaskModalOpen.value = true;
+};
+
+const openEdit = (task: Task) => {
+  modalDate.value = task.date;
+  editingTask.value = task;
+  isTaskModalOpen.value = true;
+};
+
+const handleSaveTask = (payload: SavePayload) => {
+  if (payload.id) {
+    const existing = tasksStore.tasks.find(t => t.id === payload.id);
+    if (!existing) return;
+
+    const updated: Task = {
+      ...existing,
+      title: payload.title.trim() || existing.title,
+      description: payload.description,
+      date: payload.date,
+      endDate: payload.endDate,
+      startTime: payload.startTime,
+      endTime: payload.endTime,
+      category: payload.category,
+      status: payload.status,
+    };
+
+    tasksStore.updateTask(updated);
+  } else {
+    const newTask: Omit<Task, 'id'> = {
+      title: payload.title.trim(),
+      description: payload.description,
+      date: payload.date,
+      endDate: payload.endDate,
+      startTime: payload.startTime,
+      endTime: payload.endTime,
+      category: payload.category,
+      status: payload.status,
+    };
+
+    tasksStore.addTask(newTask);
+  }
+};
+
+const handleToggleStatus = (id: string) => {
+  tasksStore.toggleStatus(id);
 };
 </script>
 
@@ -182,71 +257,41 @@ const goToToday = () => {
               </div>
             </div>
 
-            <span
-              v-if="day.hasTasks"
-              class="mb-1 w-1.5 h-1.5 rounded-full bg-brand-accent"
-            />
+            <div class="mb-1 flex items-center justify-center gap-0.5 h-3">
+              <span
+                v-if="day.hasOverdue"
+                class="calendar-indicator calendar-indicator--square"
+              />
+              <span
+                v-if="day.hasInProgress"
+                class="calendar-indicator calendar-indicator--triangle"
+              />
+              <span
+                v-if="day.showTodo"
+                class="calendar-indicator calendar-indicator--circle"
+              />
+            </div>
           </button>
         </div>
       </div>
     </div>
 
     <div class="mt-6">
-      <h2 class="text-base font-semibold text-text-primary mb-2">
-        Tasks for {{ selectedDate }}
-      </h2>
-
-      <div
-        v-if="selectedTasks.length === 0"
-        class="text-text-muted text-sm"
-      >
-        No tasks for this day.
-      </div>
-
-      <ul
-        v-else
-        class="list-none p-0 m-0 flex flex-col gap-2 text-sm"
-      >
-        <li
-          v-for="task in selectedTasks"
-          :key="task.id"
-          class="flex items-center gap-3 px-3 py-2 rounded-md border border-border-soft bg-app-surface shadow-sm"
-        >
-          <input
-            type="checkbox"
-            :checked="task.status === 'done'"
-            @change="tasksStore.toggleStatus(task.id)"
-            class="cursor-pointer"
-          />
-
-          <div class="flex-1 min-w-0">
-            <div
-              :class="[
-                'font-medium truncate',
-                task.status === 'done'
-                  ? 'line-through text-text-muted'
-                  : 'text-text-primary'
-              ]"
-            >
-              {{ task.title }}
-            </div>
-
-            <div class="text-xs text-text-muted mt-0.5">
-              <span v-if="task.startTime || task.endTime">
-                {{ task.startTime || '??:??' }} – {{ task.endTime || '...' }}
-              </span>
-              <span v-else>No time</span>
-            </div>
-          </div>
-
-          <span
-            class="text-[11px] px-2 py-0.5 rounded-full bg-brand-primarySoft text-brand-primary shrink-0"
-          >
-            {{ task.category }}
-          </span>
-        </li>
-      </ul>
+      <DayTasksList
+        :date-label="selectedDate"
+        :tasks="selectedTasks"
+        @add="openCreate"
+        @edit="openEdit"
+        @toggle-status="handleToggleStatus"
+      />
     </div>
+
+    <TaskModal
+      v-model="isTaskModalOpen"
+      :task="editingTask"
+      :default-date="modalDate"
+      @save="handleSaveTask"
+    />
   </div>
 </template>
 
@@ -258,5 +303,31 @@ const goToToday = () => {
 
 .calendar-day {
   aspect-ratio: 1 / 1;
+}
+
+.calendar-indicator {
+  display: inline-block;
+}
+
+.calendar-indicator--square {
+  width: 6px;
+  height: 6px;
+  background-color: #ef4444;
+  border-radius: 2px;
+}
+
+.calendar-indicator--triangle {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 7px solid #facc15;
+}
+
+.calendar-indicator--circle {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background-color: #22c55e;
 }
 </style>

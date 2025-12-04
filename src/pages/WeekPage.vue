@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTasksStore } from '@/stores/tasks'
+import type { Task } from '@/types'
+
 import DateBadge from '@/components/atoms/DateBadge.vue'
 import WeekMultiDayRow from '@/components/organisms/WeekMultiDayRow.vue'
+import TaskModal from '@/components/organisms/TaskModal.vue'
 
 const tasksStore = useTasksStore()
 const router = useRouter()
@@ -58,8 +61,51 @@ const tasksByDay = computed(() =>
   }),
 )
 
+// модалка тільки для редагування
+const isTaskModalOpen = ref(false)
+const editingTask = ref<Task | null>(null)
+const modalDate = ref<string>(todayIso)
+
 const openDay = (iso: string) => {
   router.push({ name: 'date', params: { date: iso } })
+}
+
+const openEditTask = (task: Task) => {
+  modalDate.value = task.date
+  editingTask.value = task
+  isTaskModalOpen.value = true
+}
+
+type SavePayload = {
+  id?: string
+  title: string
+  description?: string
+  date: string
+  endDate?: string
+  startTime?: string
+  endTime?: string
+  category: Task['category']
+  status: Task['status']
+}
+
+const handleSaveTask = (payload: SavePayload) => {
+  if (payload.id) {
+    const existing = tasksStore.tasks.find(t => t.id === payload.id)
+    if (!existing) return
+
+    const { id, ...rest } = payload
+
+    const updated: Task = {
+      ...existing,
+      ...rest,
+      id: id!,
+    }
+
+    tasksStore.updateTask(updated)
+  } else {
+    const { id, status, ...rest } = payload
+    tasksStore.addTask(rest)
+  }
 }
 </script>
 
@@ -120,6 +166,7 @@ const openDay = (iso: string) => {
             v-for="task in col.tasks"
             :key="task.id"
             class="pd4u-week-task"
+            @click.stop="openEditTask(task)"
           >
             <div
               v-if="task.startTime || task.endTime"
@@ -142,6 +189,13 @@ const openDay = (iso: string) => {
         </ul>
       </div>
     </div>
+
+    <TaskModal
+      v-model="isTaskModalOpen"
+      :task="editingTask"
+      :default-date="modalDate"
+      @save="handleSaveTask"
+    />
   </div>
 </template>
 

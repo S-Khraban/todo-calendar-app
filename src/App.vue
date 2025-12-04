@@ -15,7 +15,6 @@ import Navbar from '@/components/organisms/Navbar.vue'
 <style>
 .app-shell {
   @apply w-full mx-auto;
-
   max-width: 1400px;
   min-width: 320px;
   padding-inline: 16px;

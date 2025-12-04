@@ -2,22 +2,32 @@
 import { computed, ref } from 'vue'
 import { useTasksStore } from '@/stores/tasks'
 import type { TaskCategory, TaskStatus, Task } from '@/types'
-import Input from '@/components/atoms/Input.vue'
 import Button from '@/components/atoms/Button.vue'
-import Checkbox from '@/components/atoms/Checkbox.vue'
+import TaskModal from '@/components/organisms/TaskModal.vue'
+import { toLocalIso, formatIsoShort } from '@/utils/date'
 
 const tasksStore = useTasksStore()
 
 const categoryFilter = ref<TaskCategory | 'all'>('all')
 const statusFilter = ref<TaskStatus | 'all'>('all')
 
-const editingId = ref<string | null>(null)
-const editTitle = ref('')
-const editCategory = ref<TaskCategory>('work')
-const editStartTime = ref('')
-const editEndTime = ref('')
-const editDate = ref('')
-const editEndDate = ref('')
+const todayIso = toLocalIso(new Date())
+
+const isTaskModalOpen = ref(false)
+const editingTask = ref<Task | null>(null)
+const modalDate = ref<string>(todayIso)
+
+type SavePayload = {
+  id?: string
+  title: string
+  description?: string
+  date: string
+  endDate?: string
+  startTime?: string
+  endTime?: string
+  category: TaskCategory
+  status: TaskStatus
+}
 
 const filteredTasks = computed(() => {
   return tasksStore.tasks
@@ -43,58 +53,67 @@ const filteredTasks = computed(() => {
     })
 })
 
-const formatDate = (date: string) => {
-  const d = new Date(date)
-  const day = String(d.getDate()).padStart(2, '0')
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const year = String(d.getFullYear()).slice(2)
-  return `${day}.${month}.${year}`
+const openCreate = () => {
+  modalDate.value = todayIso
+  editingTask.value = null
+  isTaskModalOpen.value = true
 }
 
 const startEdit = (task: Task) => {
-  editingId.value = task.id
-  editTitle.value = task.title
-  editCategory.value = task.category
-  editStartTime.value = task.startTime || ''
-  editEndTime.value = task.endTime || ''
-  editDate.value = task.date
-  editEndDate.value = task.endDate ?? task.date
+  modalDate.value = task.date
+  editingTask.value = task
+  isTaskModalOpen.value = true
 }
 
-const cancelEdit = () => {
-  editingId.value = null
-}
+const handleSaveTask = (payload: SavePayload) => {
+  if (payload.id) {
+    const existing = tasksStore.tasks.find(t => t.id === payload.id)
+    if (!existing) return
 
-const saveEdit = () => {
-  if (!editingId.value) return
+    const updated: Task = {
+      ...existing,
+      title: payload.title.trim() || existing.title,
+      description: payload.description,
+      date: payload.date,
+      endDate: payload.endDate,
+      startTime: payload.startTime,
+      endTime: payload.endTime,
+      category: payload.category,
+      status: payload.status,
+    }
 
-  const original = tasksStore.tasks.find(t => t.id === editingId.value)
-  if (!original) {
-    editingId.value = null
-    return
+    tasksStore.updateTask(updated)
+  } else {
+    const newTask: Omit<Task, 'id'> = {
+      title: payload.title.trim(),
+      description: payload.description,
+      date: payload.date,
+      endDate: payload.endDate,
+      startTime: payload.startTime,
+      endTime: payload.endTime,
+      category: payload.category,
+      status: payload.status,
+    }
+
+    tasksStore.addTask(newTask)
   }
-
-  const start = editDate.value || original.date
-  const end = editEndDate.value || original.endDate || start
-
-  const updated: Task = {
-    ...original,
-    title: editTitle.value.trim() || original.title,
-    category: editCategory.value,
-    startTime: editStartTime.value || undefined,
-    endTime: editEndTime.value || undefined,
-    date: start,
-    endDate: end,
-  }
-
-  tasksStore.updateTask(updated)
-  editingId.value = null
 }
 </script>
 
 <template>
   <div class="page-container">
-    <h1>All tasks</h1>
+    <div class="flex items-center justify-between mb-4 gap-3">
+      <h1>All tasks</h1>
+
+      <Button
+        type="button"
+        size="sm"
+        variant="primary"
+        @click="openCreate"
+      >
+        Add task
+      </Button>
+    </div>
 
     <div class="flex flex-wrap gap-3 mb-5 text-sm">
       <label class="flex items-center gap-1">
@@ -126,74 +145,48 @@ const saveEdit = () => {
       </label>
     </div>
 
-    <div v-if="filteredTasks.length === 0" class="text-text-muted text-sm">
+    <div
+      v-if="filteredTasks.length === 0"
+      class="text-text-muted text-sm"
+    >
       No tasks for current filters.
     </div>
 
-    <ul v-else class="list-none p-0 m-0 flex flex-col gap-2 text-sm">
+    <ul
+      v-else
+      class="list-none p-0 m-0 flex flex-col gap-2 text-sm"
+    >
       <li
         v-for="task in filteredTasks"
         :key="task.id"
-        class="grid grid-cols-[auto,1fr,auto] gap-2 items-start px-3 py-2 rounded-md border border-border-soft bg-app-surface shadow-sm"
+        class="grid grid-cols-[1fr,auto] gap-2 items-start px-3 py-2 rounded-md border border-border-soft bg-app-surface shadow-sm cursor-pointer"
+        @click="startEdit(task)"
       >
-        <Checkbox
-          :model-value="task.status === 'done'"
-          @update:model-value="() => tasksStore.toggleStatus(task.id)"
-        />
-
-        <div>
-          <div v-if="editingId === task.id">
-            <div class="flex flex-wrap gap-2 mb-2">
-              <Input v-model="editTitle" type="text" class="flex-1 min-w-52" />
-              <Input v-model="editStartTime" type="time" class="w-26" />
-              <Input v-model="editEndTime" type="time" class="w-26" />
-              <Input v-model="editDate" type="date" class="w-38" />
-              <Input v-model="editEndDate" type="date" class="w-38" />
-
-              <select
-                v-model="editCategory"
-                class="w-34 px-2 py-1 rounded-md border border-border-soft bg-white text-sm text-text-primary focus:(outline-none border-brand-primary ring-1 ring-brand-primary/50)"
-              >
-                <option value="work">Work</option>
-                <option value="study">Study</option>
-                <option value="rest">Rest</option>
-                <option value="holiday">Holiday</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-
-            <div class="flex gap-2">
-              <Button type="button" size="sm" variant="primary" @click="saveEdit">
-                Save
-              </Button>
-
-              <Button type="button" size="sm" variant="ghost" @click="cancelEdit">
-                Cancel
-              </Button>
-            </div>
+        <div class="min-w-0">
+          <div
+            :class="[
+              'font-medium truncate',
+              task.status === 'done'
+                ? 'line-through text-text-muted'
+                : 'text-text-primary',
+            ]"
+          >
+            {{ task.title }}
           </div>
 
-          <div v-else>
-            <div
-              :class="[
-                'font-medium',
-                task.status === 'done'
-                  ? 'line-through text-text-muted'
-                  : 'text-text-primary',
-              ]"
-            >
-              {{ task.title }}
-            </div>
+          <div class="text-xs text-text-muted mt-0.5">
+            {{ formatIsoShort(task.date) }}
+            <span v-if="task.endDate && task.endDate !== task.date">
+              → {{ formatIsoShort(task.endDate) }}
+            </span>
+            <span v-if="task.startTime || task.endTime">
+              • {{ task.startTime || '??:??' }} – {{ task.endTime || '...' }}
+            </span>
+          </div>
 
-            <div class="text-xs text-text-muted mt-0.5">
-              {{ formatDate(task.date) }}
-              <span v-if="task.endDate && task.endDate !== task.date">
-                → {{ formatDate(task.endDate) }}
-              </span>
-              <span v-if="task.startTime || task.endTime">
-                • {{ task.startTime || '??:??' }} – {{ task.endTime || '...' }}
-              </span>
-            </div>
+          <div class="mt-0.5 text-[11px] text-text-muted">
+            Status:
+            <span class="capitalize">{{ task.status.replace('_', ' ') }}</span>
           </div>
         </div>
 
@@ -203,27 +196,23 @@ const saveEdit = () => {
           </span>
 
           <Button
-            v-if="editingId !== task.id"
-            type="button"
-            size="sm"
-            variant="ghost"
-            class="border-none bg-transparent text-[11px] text-brand-primary hover:text-brand-primary/80 cursor-pointer px-0"
-            @click="startEdit(task)"
-          >
-            Edit
-          </Button>
-
-          <Button
             type="button"
             size="sm"
             variant="ghost"
             class="border-none bg-transparent text-[11px] text-rose-500 hover:text-rose-400 cursor-pointer px-0"
-            @click="tasksStore.removeTask(task.id)"
+            @click.stop="tasksStore.removeTask(task.id)"
           >
             Delete
           </Button>
         </div>
       </li>
     </ul>
+
+    <TaskModal
+      v-model="isTaskModalOpen"
+      :task="editingTask"
+      :default-date="modalDate"
+      @save="handleSaveTask"
+    />
   </div>
 </template>

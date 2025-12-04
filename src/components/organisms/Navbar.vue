@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useRoute, RouterLink } from 'vue-router'
+import { useRoute } from 'vue-router'
 
 const route = useRoute()
 
@@ -10,9 +10,21 @@ const links = [
   { to: '/tasks', label: 'All Tasks' },
 ]
 
+const toLocalIso = (d: Date) => {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
+}
+
+const todayIso = toLocalIso(new Date())
+
 const isActive = (to: string) => {
   if (to === '/date') {
-    return route.path.startsWith('/date')
+    if (route.path === '/date') return true
+    if (route.name === 'today') return true
+    if (route.name === 'date' && route.params.date === todayIso) return true
+    return false
   }
 
   return route.path === to
@@ -53,7 +65,6 @@ const isActive = (to: string) => {
   max-width: var(--pd4u-max-width, 1400px);
   margin: 0 auto;
   padding: 10px 16px;
-
   display: flex;
   align-items: center;
   justify-content: space-between;
