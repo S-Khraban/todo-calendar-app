@@ -3,11 +3,11 @@ import vue from '@vitejs/plugin-vue';
 import path from 'path';
 import UnoCSS from 'unocss/vite';
 
-// https://vite.dev/config/
 export default defineConfig({
+  base: '/todo-calendar-app/',
   plugins: [
     vue(),
-    UnoCSS(), // ← Підключаємо UnoCSS
+    UnoCSS(),
   ],
   resolve: {
     alias: {

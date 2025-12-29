@@ -3,7 +3,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import WeekPage from '@/pages/WeekPage.vue';
 import CalendarPage from '@/pages/CalendarPage.vue';
 import AllTasksPage from '@/pages/AllTasksPage.vue';
-import DatePage from '@/pages/TodayPage.vue'; // тут твій DatePage (колишній Today)
+import DatePage from '@/pages/TodayPage.vue';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -33,7 +33,7 @@ const routes: RouteRecordRaw[] = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
 });
 

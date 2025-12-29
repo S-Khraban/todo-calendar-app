@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Task } from '@/types';
 
-const props = defineProps<{
+const { dateLabel, tasks } = defineProps<{
   dateLabel: string;
   tasks: Task[];
 }>();
