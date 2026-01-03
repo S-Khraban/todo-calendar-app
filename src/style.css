@@ -1,79 +1,171 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+  --pd4u-font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    sans-serif;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  --pd4u-font-size-xs: 12px;
+  --pd4u-font-size-sm: 14px;
+  --pd4u-font-size-md: 16px;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --pd4u-radius-xs: 4px;
+  --pd4u-radius-sm: 6px;
+  --pd4u-radius-md: 10px;
+
+  --pd4u-primary-bg: #3b82f6;
+  --pd4u-primary-bg-hover: #2563eb;
+  --pd4u-primary-border: #2563eb;
+  --pd4u-primary-border-hover: #1d4ed8;
+  --pd4u-primary-text: #ffffff;
+  --pd4u-primary-shadow: rgba(37, 99, 235, 0.25);
+
+  --pd4u-secondary-bg: #ffffff;
+  --pd4u-secondary-bg-hover: #f3f4f6;
+  --pd4u-secondary-border: #d1d5db;
+  --pd4u-secondary-text: #111827;
+
+  --pd4u-ghost-text: #374151;
+  --pd4u-ghost-bg-hover: #f3f4f6;
+
+  --pd4u-card-bg: #ffffff;
+  --pd4u-card-border: #e5e7eb;
+  --pd4u-empty-bg: #f9fafb;
+
+  --pd4u-text-main: #111827;
+  --pd4u-text-muted: #6b7280;
+
+  --pd4u-input-bg: #ffffff;
+  --pd4u-input-bg-disabled: #f3f4f6;
+  --pd4u-input-text: #111827;
+  --pd4u-input-text-disabled: #9ca3af;
+  --pd4u-input-border: #d1d5db;
+  --pd4u-input-padding-x: 12px;
+  --pd4u-input-padding-y: 8px;
+
+  --pd4u-date-bg: #f3f4f6;
+  --pd4u-date-border: #e5e7eb;
+  --pd4u-date-text: #111827;
+  --pd4u-date-number: #2563eb;
+  --pd4u-today-border: #2563eb;
+  --pd4u-selected-bg: #2563eb;
+  --pd4u-selected-border: #1d4ed8;
+  --pd4u-selected-text: #ffffff;
+  --pd4u-has-tasks-dot: #10b981;
+
+  --pd4u-nav-bg: #ffffff;
+  --pd4u-border-subtle: #e5e7eb;
+
+  --pd4u-app-bg: #f3f4f6;
+
+  /* Layout tokens */
+  --pd4u-max-width: 1400px;
+  --pd4u-min-width: 320px;
+
+  --pd4u-bp-tablet: 768px;
+  --pd4u-bp-desktop: 1200px;
+
+  --pd4u-page-padding-x-mobile: 16px;
+  --pd4u-page-padding-x-tablet: 24px;
+  --pd4u-page-padding-x-desktop: 32px;
+  --pd4u-page-padding-y: 24px;
+
+  --pd4u-grid-gap: 16px;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
-a:hover {
-  color: #535bf2;
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  min-width: var(--pd4u-min-width);
 }
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
   min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-.card {
-  padding: 2em;
+  font-family: var(--pd4u-font-family);
+  background-color: var(--pd4u-app-bg);
+  color: var(--pd4u-text-main);
 }
 
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  min-height: 100vh;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+/* базова типографіка й лінки */
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* контейнер сторінки (можеш використовувати як utility-клас додатково до app-shell, якщо треба) */
+
+.pd4u-container {
+  width: 100%;
+  max-width: var(--pd4u-max-width);
+  margin-inline: auto;
+  padding-inline: var(--pd4u-page-padding-x-mobile);
+  padding-block: var(--pd4u-page-padding-y);
+}
+
+@media (min-width: 768px) {
+  .pd4u-container {
+    padding-inline: var(--pd4u-page-padding-x-tablet);
   }
-  a:hover {
-    color: #747bff;
+}
+
+@media (min-width: 1200px) {
+  .pd4u-container {
+    padding-inline: var(--pd4u-page-padding-x-desktop);
   }
-  button {
-    background-color: #f9f9f9;
+}
+
+/* грід-система */
+
+.pd4u-grid {
+  display: grid;
+  gap: var(--pd4u-grid-gap);
+}
+
+/* 1 колонка завжди */
+.pd4u-grid--1 {
+  grid-template-columns: 1fr;
+}
+
+/* 2 колонки: мобілка 1, з tablet — 2 */
+.pd4u-grid--2 {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .pd4u-grid--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 3 колонки: мобілка 1, tablet — 2, desktop — 3 */
+.pd4u-grid--3 {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .pd4u-grid--3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1200px) {
+  .pd4u-grid--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
