@@ -11,6 +11,16 @@ const route = useRoute();
 
 const todayIso = toLocalIso(new Date());
 
+type TaskPriority = 'low' | 'medium' | 'high';
+
+const priorityOrder: Record<TaskPriority, number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+};
+
+const getPriority = (p?: TaskPriority) => p ?? 'low';
+
 const currentDate = computed(() => {
   const param = route.params.date as string | undefined;
   return param || todayIso;
@@ -20,7 +30,13 @@ const tasksForDate = computed(() =>
   tasksStore
     .tasksByDate(currentDate.value)
     .slice()
-    .sort((a, b) => (a.startTime || '00:00').localeCompare(b.startTime || '00:00')),
+    .sort((a, b) => {
+      const pa = priorityOrder[getPriority(a.priority as TaskPriority | undefined)];
+      const pb = priorityOrder[getPriority(b.priority as TaskPriority | undefined)];
+      if (pa !== pb) return pa - pb;
+
+      return (a.startTime || '00:00').localeCompare(b.startTime || '00:00');
+    }),
 );
 
 const currentDateLabel = computed(() => formatFullDateUA(currentDate.value));
@@ -41,6 +57,7 @@ type SavePayload = {
   endTime?: string;
   category: TaskCategory;
   status: Task['status'];
+  priority?: TaskPriority;
 };
 
 const openCreate = () => {
@@ -70,6 +87,7 @@ const handleSaveTask = (payload: SavePayload) => {
       endTime: payload.endTime,
       category: payload.category,
       status: payload.status,
+      priority: payload.priority ?? (existing.priority as TaskPriority | undefined) ?? 'low',
     };
 
     tasksStore.updateTask(updated);
@@ -83,6 +101,7 @@ const handleSaveTask = (payload: SavePayload) => {
       endTime: payload.endTime,
       category: payload.category,
       status: payload.status,
+      priority: payload.priority ?? 'low',
     };
 
     tasksStore.addTask(newTask);
@@ -131,6 +150,10 @@ const toggleStatus = (task: Task) => {
           v-for="task in tasksForDate"
           :key="task.id"
           class="flex items-center gap-3 px-3 py-2 rounded-md border border-border-soft bg-app-surface shadow-sm"
+          :class="[
+            getPriority(task.priority as TaskPriority | undefined) === 'high' ? 'ring-1 ring-amber-400/60 border-amber-300/60' : '',
+            getPriority(task.priority as TaskPriority | undefined) === 'medium' ? 'border-border-soft/80' : '',
+          ]"
         >
           <input
             type="checkbox"
@@ -142,12 +165,18 @@ const toggleStatus = (task: Task) => {
           <div class="flex-1 min-w-0">
             <div
               :class="[
-                'font-medium truncate',
+                'truncate',
+                getPriority(task.priority as TaskPriority | undefined) === 'medium' ? 'font-semibold' : 'font-medium',
                 task.status === 'done'
                   ? 'line-through text-text-muted'
                   : 'text-text-primary',
               ]"
             >
+              <span
+                v-if="getPriority(task.priority as TaskPriority | undefined) === 'high'"
+                class="mr-1 text-amber-500"
+                aria-hidden="true"
+              >★</span>
               {{ task.title }}
             </div>
 

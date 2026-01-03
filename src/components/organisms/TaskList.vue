@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import TaskItem from '@/components/molecules/TaskItem.vue'
 
+type TaskPriority = 'low' | 'medium' | 'high'
+
 type TaskItemData = {
   id: string | number
   title: string
@@ -8,6 +10,7 @@ type TaskItemData = {
   endDate?: string | null
   isCompleted: boolean
   isToday?: boolean
+  priority?: TaskPriority
 }
 
 const props = defineProps<{
@@ -53,6 +56,7 @@ const handleDelete = (id: string | number) => {
         :end-date="task.endDate"
         :is-completed="task.isCompleted"
         :is-today="task.isToday"
+        :priority="task.priority"
         @toggle-completed="handleToggle"
         @edit="handleEdit"
         @delete="handleDelete"

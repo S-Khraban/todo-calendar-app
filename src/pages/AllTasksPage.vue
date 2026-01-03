@@ -17,6 +17,8 @@ const isTaskModalOpen = ref(false)
 const editingTask = ref<Task | null>(null)
 const modalDate = ref<string>(todayIso)
 
+type TaskPriority = 'low' | 'medium' | 'high'
+
 type SavePayload = {
   id?: string
   title: string
@@ -27,7 +29,16 @@ type SavePayload = {
   endTime?: string
   category: TaskCategory
   status: TaskStatus
+  priority?: TaskPriority
 }
+
+const priorityOrder: Record<TaskPriority, number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+}
+
+const getPriority = (p?: TaskPriority) => p ?? 'low'
 
 const filteredTasks = computed(() => {
   return tasksStore.tasks
@@ -47,6 +58,11 @@ const filteredTasks = computed(() => {
       if (a.date !== b.date) {
         return a.date.localeCompare(b.date)
       }
+
+      const pa = priorityOrder[getPriority(a.priority)]
+      const pb = priorityOrder[getPriority(b.priority)]
+      if (pa !== pb) return pa - pb
+
       const aTime = a.startTime || '00:00'
       const bTime = b.startTime || '00:00'
       return aTime.localeCompare(bTime)
@@ -80,6 +96,7 @@ const handleSaveTask = (payload: SavePayload) => {
       endTime: payload.endTime,
       category: payload.category,
       status: payload.status,
+      priority: payload.priority ?? existing.priority ?? 'low',
     }
 
     tasksStore.updateTask(updated)
@@ -93,6 +110,7 @@ const handleSaveTask = (payload: SavePayload) => {
       endTime: payload.endTime,
       category: payload.category,
       status: payload.status,
+      priority: payload.priority ?? 'low',
     }
 
     tasksStore.addTask(newTask)
@@ -160,17 +178,23 @@ const handleSaveTask = (payload: SavePayload) => {
         v-for="task in filteredTasks"
         :key="task.id"
         class="grid grid-cols-[1fr,auto] gap-2 items-start px-3 py-2 rounded-md border border-border-soft bg-app-surface shadow-sm cursor-pointer"
+        :class="[
+          getPriority(task.priority) === 'high' ? 'ring-1 ring-amber-400/60 border-amber-300/60' : '',
+          getPriority(task.priority) === 'medium' ? 'border-border-soft/80' : '',
+        ]"
         @click="startEdit(task)"
       >
         <div class="min-w-0">
           <div
             :class="[
-              'font-medium truncate',
+              'truncate',
+              getPriority(task.priority) === 'medium' ? 'font-semibold' : 'font-medium',
               task.status === 'done'
                 ? 'line-through text-text-muted'
                 : 'text-text-primary',
             ]"
           >
+            <span v-if="getPriority(task.priority) === 'high'" class="mr-1 text-amber-500" aria-hidden="true">★</span>
             {{ task.title }}
           </div>
 

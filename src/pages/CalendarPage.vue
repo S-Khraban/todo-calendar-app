@@ -82,11 +82,25 @@ const monthDays = computed<DayCell[]>(() => {
   return cells
 })
 
+type TaskPriority = 'low' | 'medium' | 'high'
+
+const priorityOrder: Record<TaskPriority, number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+}
+
+const getPriority = (p?: TaskPriority) => p ?? 'low'
+
 const selectedTasks = computed(() =>
   tasksStore
     .tasksByDate(selectedDate.value)
     .slice()
     .sort((a, b) => {
+      const pa = priorityOrder[getPriority(a.priority as TaskPriority | undefined)]
+      const pb = priorityOrder[getPriority(b.priority as TaskPriority | undefined)]
+      if (pa !== pb) return pa - pb
+
       const aTime = a.startTime || '00:00'
       const bTime = b.startTime || '00:00'
       return aTime.localeCompare(bTime)
@@ -122,6 +136,7 @@ type SavePayload = {
   endTime?: string
   category: TaskCategory
   status: Task['status']
+  priority?: TaskPriority
 }
 
 const openCreate = () => {
@@ -151,6 +166,7 @@ const handleSaveTask = (payload: SavePayload) => {
       endTime: payload.endTime,
       category: payload.category,
       status: payload.status,
+      priority: payload.priority ?? (existing.priority as TaskPriority | undefined) ?? 'low',
     }
 
     tasksStore.updateTask(updated)
@@ -164,6 +180,7 @@ const handleSaveTask = (payload: SavePayload) => {
       endTime: payload.endTime,
       category: payload.category,
       status: payload.status,
+      priority: payload.priority ?? 'low',
     }
 
     tasksStore.addTask(newTask)

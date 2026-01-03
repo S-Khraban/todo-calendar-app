@@ -45,6 +45,16 @@ const weekDays: WeekDay[] = Array.from({ length: 7 }, (_, i) => {
 const weekStartIso = weekDays[0]!.iso
 const weekEndIso = weekDays[6]!.iso
 
+type TaskPriority = 'low' | 'medium' | 'high'
+
+const priorityOrder: Record<TaskPriority, number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+}
+
+const getPriority = (p?: TaskPriority) => p ?? 'low'
+
 const tasksByDay = computed(() =>
   weekDays.map(dayInfo => {
     const tasks = tasksStore
@@ -52,6 +62,10 @@ const tasksByDay = computed(() =>
       .filter(task => !(task.endDate && task.endDate !== task.date))
       .slice()
       .sort((a, b) => {
+        const pa = priorityOrder[getPriority(a.priority as TaskPriority | undefined)]
+        const pb = priorityOrder[getPriority(b.priority as TaskPriority | undefined)]
+        if (pa !== pb) return pa - pb
+
         const aTime = a.startTime || '00:00'
         const bTime = b.startTime || '00:00'
         return aTime.localeCompare(bTime)
@@ -61,7 +75,6 @@ const tasksByDay = computed(() =>
   }),
 )
 
-// модалка тільки для редагування
 const isTaskModalOpen = ref(false)
 const editingTask = ref<Task | null>(null)
 const modalDate = ref<string>(todayIso)
@@ -86,6 +99,7 @@ type SavePayload = {
   endTime?: string
   category: Task['category']
   status: Task['status']
+  priority?: TaskPriority
 }
 
 const handleSaveTask = (payload: SavePayload) => {
@@ -99,12 +113,16 @@ const handleSaveTask = (payload: SavePayload) => {
       ...existing,
       ...rest,
       id: id!,
+      priority: payload.priority ?? (existing.priority as TaskPriority | undefined) ?? 'low',
     }
 
     tasksStore.updateTask(updated)
   } else {
-    const { id, status, ...rest } = payload
-    tasksStore.addTask(rest)
+    const { id, ...rest } = payload
+    tasksStore.addTask({
+      ...rest,
+      priority: payload.priority ?? 'low',
+    })
   }
 }
 </script>
@@ -166,6 +184,10 @@ const handleSaveTask = (payload: SavePayload) => {
             v-for="task in col.tasks"
             :key="task.id"
             class="pd4u-week-task"
+            :class="[
+              getPriority(task.priority as TaskPriority | undefined) === 'high' ? 'pd4u-week-task--high' : '',
+              getPriority(task.priority as TaskPriority | undefined) === 'medium' ? 'pd4u-week-task--medium' : '',
+            ]"
             @click.stop="openEditTask(task)"
           >
             <div
@@ -178,11 +200,13 @@ const handleSaveTask = (payload: SavePayload) => {
             <div
               :class="[
                 'pd4u-week-task__title',
+                getPriority(task.priority as TaskPriority | undefined) === 'medium' ? 'pd4u-week-task__title--medium' : '',
                 task.status === 'done'
                   ? 'line-through text-text-muted'
                   : 'text-text-primary',
               ]"
             >
+              <span v-if="getPriority(task.priority as TaskPriority | undefined) === 'high'" class="pd4u-week-task__star" aria-hidden="true">★</span>
               {{ task.title }}
             </div>
           </li>
@@ -264,6 +288,19 @@ const handleSaveTask = (payload: SavePayload) => {
   background-color: var(--pd4u-empty-bg, #f9fafb);
 }
 
+.pd4u-week-task--high {
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.45);
+}
+
+.pd4u-week-task__star {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--pd4u-priority-high, #f59e0b);
+  transform: translateY(-1px);
+}
+
 .pd4u-week-task__time {
   font-size: 11px;
   color: var(--pd4u-text-muted, #6b7280);
@@ -272,5 +309,9 @@ const handleSaveTask = (payload: SavePayload) => {
 
 .pd4u-week-task__title {
   font-size: 13px;
+}
+
+.pd4u-week-task__title--medium {
+  font-weight: 600;
 }
 </style>

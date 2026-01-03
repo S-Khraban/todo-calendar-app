@@ -4,6 +4,8 @@ import Checkbox from '@/components/atoms/Checkbox.vue'
 import Button from '@/components/atoms/Button.vue'
 import DateBadge from '@/components/atoms/DateBadge.vue'
 
+type TaskPriority = 'low' | 'medium' | 'high'
+
 const props = defineProps<{
   id: string | number
   title: string
@@ -11,6 +13,7 @@ const props = defineProps<{
   endDate?: string | null
   isCompleted: boolean
   isToday?: boolean
+  priority?: TaskPriority
 }>()
 
 const emit = defineEmits<{
@@ -23,6 +26,9 @@ const isLongTerm = computed(() => {
   if (!props.endDate) return false
   return props.endDate !== props.startDate
 })
+
+const isHigh = computed(() => props.priority === 'high')
+const isMedium = computed(() => props.priority === 'medium')
 
 const handleToggle = (value: boolean) => {
   emit('toggleCompleted', { id: props.id, value })
@@ -38,13 +44,23 @@ const handleDelete = () => {
 </script>
 
 <template>
-  <div class="pd4u-task-item">
+  <div
+    class="pd4u-task-item"
+    :class="{
+      'pd4u-task-item--high': isHigh,
+      'pd4u-task-item--medium': isMedium,
+    }"
+  >
     <div class="pd4u-task-item__main">
       <Checkbox :model-value="props.isCompleted" @update:model-value="handleToggle">
         <span
           class="pd4u-task-item__title"
-          :class="{ 'pd4u-task-item__title--done': props.isCompleted }"
+          :class="{
+            'pd4u-task-item__title--done': props.isCompleted,
+            'pd4u-task-item__title--medium': isMedium,
+          }"
         >
+          <span v-if="isHigh" class="pd4u-task-item__star" aria-hidden="true">★</span>
           {{ props.title }}
         </span>
       </Checkbox>
@@ -101,6 +117,15 @@ const handleDelete = () => {
   box-sizing: border-box;
 }
 
+.pd4u-task-item--high {
+  border-color: var(--pd4u-priority-high-border, #fbbf24);
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.35);
+}
+
+.pd4u-task-item--medium {
+  border-color: var(--pd4u-priority-medium-border, #d1d5db);
+}
+
 .pd4u-task-item__main {
   flex: 1 1 auto;
   min-width: 0;
@@ -133,6 +158,19 @@ const handleDelete = () => {
   font-size: var(--pd4u-font-size-sm, 14px);
   color: var(--pd4u-text-main, #111827);
   word-break: break-word;
+}
+
+.pd4u-task-item__star {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--pd4u-priority-high, #f59e0b);
+  transform: translateY(-1px);
+}
+
+.pd4u-task-item__title--medium {
+  font-weight: 600;
 }
 
 .pd4u-task-item__title--done {

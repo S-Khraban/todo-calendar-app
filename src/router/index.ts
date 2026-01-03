@@ -30,6 +30,11 @@ const routes: RouteRecordRaw[] = [
     name: 'tasks',
     component: AllTasksPage,
   },
+  {
+  path: '/auth/callback',
+  name: 'auth-callback',
+  component: () => import('@/pages/AuthCallbackPage.vue'),
+},
 ];
 
 const router = createRouter({

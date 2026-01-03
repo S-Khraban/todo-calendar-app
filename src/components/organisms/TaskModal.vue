@@ -5,6 +5,8 @@ import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 
+type TaskPriority = 'low' | 'medium' | 'high'
+
 const props = defineProps<{
   modelValue: boolean
   task: Task | null
@@ -25,6 +27,7 @@ const emit = defineEmits<{
       endTime?: string
       category: TaskCategory
       status: TaskStatus
+      priority?: TaskPriority
     },
   ): void
 }>()
@@ -38,6 +41,7 @@ const form = reactive({
   endTime: '',
   category: 'work' as TaskCategory,
   status: 'todo' as TaskStatus,
+  priority: 'low' as TaskPriority,
 })
 
 const isEdit = computed(() => !!props.task)
@@ -54,6 +58,7 @@ watch(
       form.endTime = ''
       form.category = 'work'
       form.status = 'todo'
+      form.priority = 'low'
       return
     }
 
@@ -65,6 +70,7 @@ watch(
     form.endTime = task.endTime ?? ''
     form.category = task.category
     form.status = task.status
+    form.priority = (task.priority ?? 'low') as TaskPriority
   },
   { immediate: true },
 )
@@ -100,6 +106,7 @@ const onSubmit = () => {
     endTime: form.endTime || undefined,
     category: form.category,
     status: form.status,
+    priority: form.priority,
   })
 
   close()
@@ -177,6 +184,15 @@ const onSubmit = () => {
               <option value="done">Done</option>
             </select>
           </div>
+        </div>
+
+        <div class="tm-field">
+          <div class="tm-label">Пріоритет</div>
+          <select v-model="form.priority" class="tm-native">
+            <option value="low">Низький</option>
+            <option value="medium">Середній</option>
+            <option value="high">Високий ★</option>
+          </select>
         </div>
 
         <div class="tm-footer">

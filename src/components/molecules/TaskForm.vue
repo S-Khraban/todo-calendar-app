@@ -3,10 +3,13 @@ import { reactive, watch } from 'vue'
 import Input from '@/components/atoms/Input.vue'
 import Button from '@/components/atoms/Button.vue'
 
+type TaskPriority = 'low' | 'medium' | 'high'
+
 type TaskFormValue = {
   title: string
   startDate: string
   endDate?: string | null
+  priority?: TaskPriority
 }
 
 const props = withDefaults(
@@ -30,6 +33,7 @@ const form = reactive<TaskFormValue>({
   title: props.initialValue?.title || '',
   startDate: props.initialValue?.startDate || '',
   endDate: props.initialValue?.endDate || null,
+  priority: props.initialValue?.priority || 'low',
 })
 
 watch(
@@ -39,6 +43,7 @@ watch(
     form.title = value.title
     form.startDate = value.startDate
     form.endDate = value.endDate ?? null
+    form.priority = value.priority ?? 'low'
   },
   { deep: true }
 )
@@ -50,6 +55,7 @@ const onSubmit = () => {
     title: form.title.trim(),
     startDate: form.startDate,
     endDate: form.endDate || null,
+    priority: form.priority ?? 'low',
   })
 }
 
@@ -94,6 +100,18 @@ const onCancel = () => {
           type="date"
         />
       </div>
+    </div>
+
+    <div class="pd4u-task-form__row">
+      <label class="pd4u-task-form__label">
+        Priority
+      </label>
+
+      <select v-model="form.priority" class="pd4u-task-form__select">
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High ★</option>
+      </select>
     </div>
 
     <div class="pd4u-task-form__actions">
@@ -147,6 +165,22 @@ const onCancel = () => {
 .pd4u-task-form__label {
   font-size: 12px;
   color: var(--pd4u-text-muted, #6b7280);
+}
+
+.pd4u-task-form__select {
+  height: 36px;
+  padding: 0 10px;
+  border-radius: var(--pd4u-radius-sm, 8px);
+  border: 1px solid var(--pd4u-card-border, #e5e7eb);
+  background-color: var(--pd4u-card-bg, #ffffff);
+  color: var(--pd4u-text-main, #111827);
+  font-size: 14px;
+  outline: none;
+}
+
+.pd4u-task-form__select:focus {
+  border-color: var(--pd4u-focus, #93c5fd);
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.35);
 }
 
 .pd4u-task-form__actions {
