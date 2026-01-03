@@ -1,9 +1,9 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
-import WeekPage from '@/pages/WeekPage.vue';
-import CalendarPage from '@/pages/CalendarPage.vue';
-import AllTasksPage from '@/pages/AllTasksPage.vue';
-import DatePage from '@/pages/TodayPage.vue';
+import WeekPage from '@/pages/WeekPage.vue'
+import CalendarPage from '@/pages/CalendarPage.vue'
+import AllTasksPage from '@/pages/AllTasksPage.vue'
+import DatePage from '@/pages/TodayPage.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -31,15 +31,15 @@ const routes: RouteRecordRaw[] = [
     component: AllTasksPage,
   },
   {
-  path: '/auth/callback',
-  name: 'auth-callback',
-  component: () => import('@/pages/AuthCallbackPage.vue'),
-},
-];
+    path: '/auth/callback',
+    name: 'auth-callback',
+    component: () => import('@/pages/AuthCallbackPage.vue'),
+  },
+]
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHistory(),
   routes,
-});
+})
 
-export default router;
+export default router

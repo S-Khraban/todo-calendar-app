@@ -6,14 +6,8 @@ import { supabase } from '@/services/supabaseClient'
 const router = useRouter()
 
 onMounted(async () => {
-  const { data } = await supabase.auth.getSession()
-
-  if (data.session) {
-    await router.replace('/')
-    return
-  }
-
-  await router.replace('/login')
+  await supabase.auth.getSession()
+  await router.replace('/')
 })
 </script>
 
