@@ -2,6 +2,9 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/services/supabaseClient'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const modelValue = defineModel<boolean>({ default: false })
 
@@ -18,6 +21,11 @@ let unsubscribe: (() => void) | null = null
 const close = () => {
   modelValue.value = false
   emit('close')
+}
+
+const goToUserPage = () => {
+  close()
+  router.push('/user')
 }
 
 const signInWithGoogle = async () => {
@@ -116,15 +124,25 @@ watch(modelValue, v => {
           Continue with Google
         </button>
 
-        <button
-          v-if="session"
-          type="button"
-          class="auth-popover__action auth-popover__action--ghost"
-          :disabled="isLoading"
-          @click="disconnect"
-        >
-          Disconnect
-        </button>
+        <template v-if="session">
+          <button
+            type="button"
+            class="auth-popover__action"
+            :disabled="isLoading"
+            @click="goToUserPage"
+          >
+            User
+          </button>
+
+          <button
+            type="button"
+            class="auth-popover__action auth-popover__action--ghost"
+            :disabled="isLoading"
+            @click="disconnect"
+          >
+            Disconnect
+          </button>
+        </template>
       </div>
     </div>
   </transition>

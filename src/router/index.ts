@@ -4,6 +4,7 @@ import WeekPage from '@/pages/WeekPage.vue'
 import CalendarPage from '@/pages/CalendarPage.vue'
 import AllTasksPage from '@/pages/AllTasksPage.vue'
 import DatePage from '@/pages/TodayPage.vue'
+import UserPage from '@/pages/UserPage.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -29,6 +30,11 @@ const routes: RouteRecordRaw[] = [
     path: '/tasks',
     name: 'tasks',
     component: AllTasksPage,
+  },
+  {
+    path: '/user',
+    name: 'user',
+    component: UserPage,
   },
   {
     path: '/auth/callback',
