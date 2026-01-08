@@ -12,14 +12,33 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { Session } from '@supabase/supabase-js'
 import Navbar from '@/components/organisms/Navbar.vue'
 import { supabase } from '@/services/supabaseClient'
+import { useTasksStore } from '@/stores/tasks'
 
 const session = ref<Session | null>(null)
 
+const tasksStore = useTasksStore()
+
 let unsubscribe: (() => void) | null = null
+
+const refreshStores = async () => {
+  if (!session.value) {
+    tasksStore.reset?.()
+    return
+  }
+
+  if (typeof tasksStore.loadFromSupabase === 'function') {
+    await tasksStore.loadFromSupabase()
+    return
+  }
+
+  if (typeof tasksStore.load === 'function') {
+    await tasksStore.load()
+  }
+}
 
 onMounted(async () => {
   session.value = (await supabase.auth.getSession()).data.session
@@ -31,6 +50,9 @@ onMounted(async () => {
   unsubscribe = data.subscription.unsubscribe
 })
 
+watch(session, async () => {
+  await refreshStores()
+}, { immediate: true })
 onBeforeUnmount(() => {
   unsubscribe?.()
 })
