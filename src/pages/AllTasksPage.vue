@@ -1,16 +1,35 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useTasksStore } from '@/stores/tasks'
-import type { TaskCategory, TaskStatus, Task } from '@/types'
+import { useCategoriesStore } from '@/stores/categories'
+import type { TaskStatus, Task } from '@/types'
 import Button from '@/components/atoms/Button.vue'
 import TaskModal from '@/components/organisms/TaskModal.vue'
 import { toLocalIso, formatIsoShort } from '@/utils/date'
 
 const tasksStore = useTasksStore()
+const categoriesStore = useCategoriesStore()
+const { visibleCategories } = storeToRefs(categoriesStore)
 
-const categoryFilter = ref<TaskCategory | 'all'>('all')
+onMounted(async () => {
+  await categoriesStore.fetchCategories()
+})
+
+const categoryMap = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const c of visibleCategories.value ?? []) {
+    map[c.id] = c.name
+  }
+  return map
+})
+
+const getCategoryLabel = (categoryId: string | null) => {
+  if (!categoryId) return '—'
+  return categoryMap.value[categoryId] ?? '—'
+}
+
 const statusFilter = ref<TaskStatus | 'all'>('all')
-
 const todayIso = toLocalIso(new Date())
 
 const isTaskModalOpen = ref(false)
@@ -27,7 +46,7 @@ type SavePayload = {
   endDate?: string
   startTime?: string
   endTime?: string
-  category: TaskCategory
+  categoryId: string | null
   status: TaskStatus
   priority?: TaskPriority
 }
@@ -43,14 +62,9 @@ const getPriority = (p?: TaskPriority) => p ?? 'low'
 const filteredTasks = computed(() => {
   return tasksStore.tasks
     .filter(task => {
-      if (categoryFilter.value !== 'all' && task.category !== categoryFilter.value) {
-        return false
-      }
-
       if (statusFilter.value !== 'all' && task.status !== statusFilter.value) {
         return false
       }
-
       return true
     })
     .slice()
@@ -81,7 +95,7 @@ const startEdit = (task: Task) => {
   isTaskModalOpen.value = true
 }
 
-const handleSaveTask = (payload: SavePayload) => {
+const handleSaveTask = async (payload: SavePayload) => {
   if (payload.id) {
     const existing = tasksStore.tasks.find(t => t.id === payload.id)
     if (!existing) return
@@ -89,32 +103,30 @@ const handleSaveTask = (payload: SavePayload) => {
     const updated: Task = {
       ...existing,
       title: payload.title.trim() || existing.title,
-      description: payload.description,
+      description: payload.description ?? null,
       date: payload.date,
-      endDate: payload.endDate,
+      endDate: payload.endDate ?? null,
       startTime: payload.startTime,
       endTime: payload.endTime,
-      category: payload.category,
+      categoryId: payload.categoryId ?? null,
       status: payload.status,
       priority: payload.priority ?? existing.priority ?? 'low',
     }
 
-    tasksStore.updateTask(updated)
-  } else {
-    const newTask: Omit<Task, 'id'> = {
-      title: payload.title.trim(),
-      description: payload.description,
-      date: payload.date,
-      endDate: payload.endDate,
-      startTime: payload.startTime,
-      endTime: payload.endTime,
-      category: payload.category,
-      status: payload.status,
-      priority: payload.priority ?? 'low',
-    }
-
-    tasksStore.addTask(newTask)
+    await tasksStore.updateTask(updated)
+    return
   }
+
+  await tasksStore.addTask({
+    title: payload.title.trim(),
+    description: payload.description ?? null,
+    date: payload.date,
+    endDate: payload.endDate ?? null,
+    startTime: payload.startTime,
+    endTime: payload.endTime,
+    categoryId: payload.categoryId ?? null,
+    priority: payload.priority ?? 'low',
+  } as any)
 }
 </script>
 
@@ -123,32 +135,12 @@ const handleSaveTask = (payload: SavePayload) => {
     <div class="flex items-center justify-between mb-4 gap-3">
       <h1>All tasks</h1>
 
-      <Button
-        type="button"
-        size="sm"
-        variant="primary"
-        @click="openCreate"
-      >
+      <Button type="button" size="sm" variant="primary" @click="openCreate">
         Add task
       </Button>
     </div>
 
     <div class="flex flex-wrap gap-3 mb-5 text-sm">
-      <label class="flex items-center gap-1">
-        <span>Category:</span>
-        <select
-          v-model="categoryFilter"
-          class="ml-1 px-2 py-1 rounded-md border border-border-soft bg-white text-text-primary text-sm focus:(outline-none border-brand-primary ring-1 ring-brand-primary/50)"
-        >
-          <option value="all">All</option>
-          <option value="work">Work</option>
-          <option value="study">Study</option>
-          <option value="rest">Rest</option>
-          <option value="holiday">Holiday</option>
-          <option value="other">Other</option>
-        </select>
-      </label>
-
       <label class="flex items-center gap-1">
         <span>Status:</span>
         <select
@@ -163,17 +155,11 @@ const handleSaveTask = (payload: SavePayload) => {
       </label>
     </div>
 
-    <div
-      v-if="filteredTasks.length === 0"
-      class="text-text-muted text-sm"
-    >
+    <div v-if="filteredTasks.length === 0" class="text-text-muted text-sm">
       No tasks for current filters.
     </div>
 
-    <ul
-      v-else
-      class="list-none p-0 m-0 flex flex-col gap-2 text-sm"
-    >
+    <ul v-else class="list-none p-0 m-0 flex flex-col gap-2 text-sm">
       <li
         v-for="task in filteredTasks"
         :key="task.id"
@@ -189,12 +175,15 @@ const handleSaveTask = (payload: SavePayload) => {
             :class="[
               'truncate',
               getPriority(task.priority) === 'medium' ? 'font-semibold' : 'font-medium',
-              task.status === 'done'
-                ? 'line-through text-text-muted'
-                : 'text-text-primary',
+              task.status === 'done' ? 'line-through text-text-muted' : 'text-text-primary',
             ]"
           >
-            <span v-if="getPriority(task.priority) === 'high'" class="mr-1 text-amber-500" aria-hidden="true">★</span>
+            <span
+              v-if="getPriority(task.priority) === 'high'"
+              class="mr-1 text-amber-500"
+              aria-hidden="true"
+              >★</span
+            >
             {{ task.title }}
           </div>
 
@@ -216,7 +205,7 @@ const handleSaveTask = (payload: SavePayload) => {
 
         <div class="flex flex-col items-end gap-1">
           <span class="text-[11px] px-2 py-0.5 rounded-full bg-brand-primarySoft text-brand-primary">
-            {{ task.category }}
+            {{ getCategoryLabel(task.categoryId) }}
           </span>
 
           <Button

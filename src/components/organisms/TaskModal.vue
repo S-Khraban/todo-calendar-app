@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
-import type { Task, TaskCategory, TaskStatus } from '@/types'
+import { storeToRefs } from 'pinia'
+import type { Task, TaskStatus } from '@/types'
+import { useCategoriesStore } from '@/stores/categories'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
@@ -25,12 +27,17 @@ const emit = defineEmits<{
       endDate?: string
       startTime?: string
       endTime?: string
-      category: TaskCategory
+      categoryId: string | null
       status: TaskStatus
       priority?: TaskPriority
     },
   ): void
 }>()
+
+const categoriesStore = useCategoriesStore()
+const { visibleCategories } = storeToRefs(categoriesStore)
+
+const categories = computed(() => visibleCategories.value ?? [])
 
 const form = reactive({
   title: '',
@@ -39,12 +46,32 @@ const form = reactive({
   endDate: props.defaultDate,
   startTime: '',
   endTime: '',
-  category: 'work' as TaskCategory,
+  categoryId: '' as string,
   status: 'todo' as TaskStatus,
   priority: 'low' as TaskPriority,
 })
 
 const isEdit = computed(() => !!props.task)
+
+const ensureDefaultCategory = () => {
+  const list = categories.value ?? []
+  if (list.length === 0) return
+
+  const exists = form.categoryId && list.some(c => c.id === form.categoryId)
+  if (exists) return
+
+  form.categoryId = list[0]!.id
+}
+
+watch(
+  () => props.modelValue,
+  async isOpen => {
+    if (!isOpen) return
+    await categoriesStore.fetchCategories()
+    ensureDefaultCategory()
+  },
+  { immediate: true },
+)
 
 watch(
   () => props.task,
@@ -56,9 +83,10 @@ watch(
       form.endDate = props.defaultDate
       form.startTime = ''
       form.endTime = ''
-      form.category = 'work'
+      form.categoryId = ''
       form.status = 'todo'
       form.priority = 'low'
+      ensureDefaultCategory()
       return
     }
 
@@ -68,9 +96,10 @@ watch(
     form.endDate = task.endDate ?? task.date
     form.startTime = task.startTime ?? ''
     form.endTime = task.endTime ?? ''
-    form.category = task.category
+    form.categoryId = task.categoryId ?? ''
     form.status = task.status
     form.priority = (task.priority ?? 'low') as TaskPriority
+    ensureDefaultCategory()
   },
   { immediate: true },
 )
@@ -104,7 +133,7 @@ const onSubmit = () => {
     endDate: form.endDate && form.endDate !== form.date ? form.endDate : undefined,
     startTime: form.startTime || undefined,
     endTime: form.endTime || undefined,
-    category: form.category,
+    categoryId: form.categoryId || null,
     status: form.status,
     priority: form.priority,
   })
@@ -123,12 +152,7 @@ const onSubmit = () => {
   >
     <div class="tm-scroll">
       <form class="tm-form" @submit.prevent="onSubmit">
-        <BaseInput
-          v-model="form.title"
-          label="Назва"
-          placeholder="Що потрібно зробити?"
-          required
-        />
+        <BaseInput v-model="form.title" label="Назва" placeholder="Що потрібно зробити?" required />
 
         <div class="tm-field">
           <div class="tm-label">Опис (необовʼязково)</div>
@@ -167,12 +191,11 @@ const onSubmit = () => {
         <div class="tm-row">
           <div class="tm-field">
             <div class="tm-label">Категорія</div>
-            <select v-model="form.category" class="tm-native">
-              <option value="work">Робота</option>
-              <option value="study">Навчання</option>
-              <option value="rest">Дозвілля</option>
-              <option value="holiday">Свята</option>
-              <option value="other">Інше</option>
+            <select v-model="form.categoryId" class="tm-native" :disabled="!categories.length">
+              <option value="" disabled>Оберіть категорію</option>
+              <option v-for="c in categories" :key="c.id" :value="c.id">
+                {{ c.name }}
+              </option>
             </select>
           </div>
 
@@ -196,9 +219,7 @@ const onSubmit = () => {
         </div>
 
         <div class="tm-footer">
-          <BaseButton variant="ghost" type="button" @click="close">
-            Скасувати
-          </BaseButton>
+          <BaseButton variant="ghost" type="button" @click="close">Скасувати</BaseButton>
           <BaseButton variant="solid" type="submit">
             {{ isEdit ? 'Зберегти' : 'Створити' }}
           </BaseButton>

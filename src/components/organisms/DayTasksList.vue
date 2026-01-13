@@ -2,9 +2,10 @@
 import { computed } from 'vue'
 import type { Task } from '@/types'
 
-const { dateLabel, tasks } = defineProps<{
+const { dateLabel, tasks, categoryMap } = defineProps<{
   dateLabel: string
   tasks: Task[]
+  categoryMap: Record<string, string>
 }>()
 
 const emit = defineEmits<{
@@ -40,14 +41,18 @@ const sortedTasks = computed(() => {
     return aDone - bDone
   })
 })
+
+const getCategoryLabel = (task: Task) => {
+  const id = task.categoryId
+  if (!id) return '—'
+  return categoryMap[id] ?? '—'
+}
 </script>
 
 <template>
   <section>
     <div class="flex items-center justify-between mb-2 gap-3">
-      <h2 class="text-base font-semibold text-text-primary">
-        Tasks for {{ dateLabel }}
-      </h2>
+      <h2 class="text-base font-semibold text-text-primary">Tasks for {{ dateLabel }}</h2>
 
       <button
         type="button"
@@ -58,17 +63,11 @@ const sortedTasks = computed(() => {
       </button>
     </div>
 
-    <div
-      v-if="sortedTasks.length === 0"
-      class="text-text-muted text-sm"
-    >
+    <div v-if="sortedTasks.length === 0" class="text-text-muted text-sm">
       No tasks for this day.
     </div>
 
-    <ul
-      v-else
-      class="list-none p-0 m-0 flex flex-col gap-2 text-sm"
-    >
+    <ul v-else class="list-none p-0 m-0 flex flex-col gap-2 text-sm">
       <li
         v-for="task in sortedTasks"
         :key="task.id"
@@ -92,12 +91,15 @@ const sortedTasks = computed(() => {
             :class="[
               'truncate',
               getPriority(task.priority) === 'medium' ? 'font-semibold' : 'font-medium',
-              task.status === 'done'
-                ? 'line-through text-text-muted'
-                : 'text-text-primary'
+              task.status === 'done' ? 'line-through text-text-muted' : 'text-text-primary',
             ]"
           >
-            <span v-if="getPriority(task.priority) === 'high'" class="mr-1 text-amber-500" aria-hidden="true">★</span>
+            <span
+              v-if="getPriority(task.priority) === 'high'"
+              class="mr-1 text-amber-500"
+              aria-hidden="true"
+              >★</span
+            >
             {{ task.title }}
           </div>
 
@@ -109,15 +111,10 @@ const sortedTasks = computed(() => {
           </div>
         </div>
 
-        <span
-          class="text-[11px] px-2 py-0.5 rounded-full bg-brand-primarySoft text-brand-primary shrink-0"
-        >
-          {{ task.category }}
+        <span class="text-[11px] px-2 py-0.5 rounded-full bg-brand-primarySoft text-brand-primary shrink-0">
+          {{ getCategoryLabel(task) }}
         </span>
       </li>
     </ul>
   </section>
 </template>
-
-<style scoped>
-</style>

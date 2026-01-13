@@ -1,18 +1,16 @@
-export type TaskStatus = 'todo' | 'in_progress' | 'done';
-export type TaskCategory = 'work' | 'study' | 'rest' | 'holiday' | 'other';
 
-export interface Task {
-  id: string;
-  title: string;
-  description?: string;
+export type TaskStatus = 'todo' | 'in_progress' | 'done'
+export type TaskPriority = 'low' | 'medium' | 'high'
 
-  date: string;      // стартова дата (YYYY-MM-DD)
-  endDate?: string;  // кінцева дата (якщо довгострокова задача)
-
-  startTime?: string; // '09:30'
-  endTime?: string;   // '11:00'
-
-  category: TaskCategory;
-  status: TaskStatus;
-  priority?: 'low' | 'medium' | 'high';
+export type Task = {
+  id: string
+  title: string
+  status: TaskStatus
+  date: string
+  endDate?: string | null
+  startTime?: string
+  endTime?: string
+  description?: string | null
+  categoryId: string | null
+  priority?: TaskPriority
 }

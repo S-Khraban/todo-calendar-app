@@ -1,13 +1,29 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useTasksStore } from '@/stores/tasks'
-import type { Task, TaskCategory } from '@/types'
+import { useCategoriesStore } from '@/stores/categories'
+import type { Task, TaskStatus } from '@/types'
 import TaskModal from '@/components/organisms/TaskModal.vue'
 import DayTasksList from '@/components/organisms/DayTasksList.vue'
 import { toLocalIso, formatMonthLabel } from '@/utils/date'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
 const tasksStore = useTasksStore()
+const categoriesStore = useCategoriesStore()
+const { visibleCategories } = storeToRefs(categoriesStore)
+
+onMounted(async () => {
+  await categoriesStore.fetchCategories()
+})
+
+const categoryMap = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const c of visibleCategories.value ?? []) {
+    map[c.id] = c.name
+  }
+  return map
+})
 
 const today = new Date()
 const todayIso = toLocalIso(today)
@@ -97,8 +113,8 @@ const selectedTasks = computed(() =>
     .tasksByDate(selectedDate.value)
     .slice()
     .sort((a, b) => {
-      const pa = priorityOrder[getPriority(a.priority as TaskPriority | undefined)]
-      const pb = priorityOrder[getPriority(b.priority as TaskPriority | undefined)]
+      const pa = priorityOrder[getPriority(a.priority)]
+      const pb = priorityOrder[getPriority(b.priority)]
       if (pa !== pb) return pa - pb
 
       const aTime = a.startTime || '00:00'
@@ -134,8 +150,8 @@ type SavePayload = {
   endDate?: string
   startTime?: string
   endTime?: string
-  category: TaskCategory
-  status: Task['status']
+  categoryId: string | null
+  status: TaskStatus
   priority?: TaskPriority
 }
 
@@ -151,7 +167,7 @@ const openEdit = (task: Task) => {
   isTaskModalOpen.value = true
 }
 
-const handleSaveTask = (payload: SavePayload) => {
+const handleSaveTask = async (payload: SavePayload) => {
   if (payload.id) {
     const existing = tasksStore.tasks.find(t => t.id === payload.id)
     if (!existing) return
@@ -159,32 +175,30 @@ const handleSaveTask = (payload: SavePayload) => {
     const updated: Task = {
       ...existing,
       title: payload.title.trim() || existing.title,
-      description: payload.description,
+      description: payload.description ?? null,
       date: payload.date,
-      endDate: payload.endDate,
+      endDate: payload.endDate ?? null,
       startTime: payload.startTime,
       endTime: payload.endTime,
-      category: payload.category,
+      categoryId: payload.categoryId ?? null,
       status: payload.status,
-      priority: payload.priority ?? (existing.priority as TaskPriority | undefined) ?? 'low',
+      priority: payload.priority ?? existing.priority ?? 'low',
     }
 
-    tasksStore.updateTask(updated)
-  } else {
-    const newTask: Omit<Task, 'id'> = {
-      title: payload.title.trim(),
-      description: payload.description,
-      date: payload.date,
-      endDate: payload.endDate,
-      startTime: payload.startTime,
-      endTime: payload.endTime,
-      category: payload.category,
-      status: payload.status,
-      priority: payload.priority ?? 'low',
-    }
-
-    tasksStore.addTask(newTask)
+    await tasksStore.updateTask(updated)
+    return
   }
+
+  await tasksStore.addTask({
+    title: payload.title.trim(),
+    description: payload.description ?? null,
+    date: payload.date,
+    endDate: payload.endDate ?? null,
+    startTime: payload.startTime,
+    endTime: payload.endTime,
+    categoryId: payload.categoryId ?? null,
+    priority: payload.priority ?? 'low',
+  } as any)
 }
 
 const handleToggleStatus = (id: string) => {
@@ -195,51 +209,27 @@ const handleToggleStatus = (id: string) => {
 <template>
   <div class="page-container">
     <div class="flex items-center justify-between mb-4 gap-3">
-      <h1 class="text-xl font-semibold text-text-primary">
-        Tasks calendar
-      </h1>
+      <h1 class="text-xl font-semibold text-text-primary">Tasks calendar</h1>
 
-      <BaseButton
-        size="sm"
-        variant="outline"
-        @click="goToToday"
-      >
-        Today
-      </BaseButton>
+      <BaseButton size="sm" variant="outline" @click="goToToday">Today</BaseButton>
     </div>
 
     <div class="rounded-lg border border-border-soft bg-app-surface shadow-sm p-3 md:p-4">
       <div class="flex items-center justify-between mb-3 text-sm">
-        <BaseButton
-          variant="outline"
-          size="sm"
-          @click="changeMonth(-1)"
-        >
-          ‹ Previous
-        </BaseButton>
+        <BaseButton variant="outline" size="sm" @click="changeMonth(-1)">‹ Previous</BaseButton>
 
         <div class="font-semibold capitalize text-text-primary text-sm md:text-base">
           {{ monthLabel }}
         </div>
 
-        <BaseButton
-          variant="outline"
-          size="sm"
-          @click="changeMonth(1)"
-        >
-          Next ›
-        </BaseButton>
+        <BaseButton variant="outline" size="sm" @click="changeMonth(1)">Next ›</BaseButton>
       </div>
 
       <div class="calendar-inner">
         <div
           class="grid grid-cols-7 gap-1 text-[11px] md:text-[12px] text-center mb-1 text-text-muted uppercase tracking-wide"
         >
-          <div
-            v-for="w in weekDaysShort"
-            :key="w"
-            class="py-1"
-          >
+          <div v-for="w in weekDaysShort" :key="w" class="py-1">
             {{ w }}
           </div>
         </div>
@@ -256,7 +246,7 @@ const handleToggleStatus = (id: string) => {
                 ? 'border-2 border-brand-primary bg-brand-primarySoft/70'
                 : 'border border-border-soft',
               day.isToday ? 'ring-1 ring-brand-primary/60' : '',
-              day.isCurrentMonth ? 'opacity-100' : 'opacity-50 bg-app-surfaceSoft'
+              day.isCurrentMonth ? 'opacity-100' : 'opacity-50 bg-app-surfaceSoft',
             ]"
           >
             <div class="mt-1">
@@ -265,7 +255,7 @@ const handleToggleStatus = (id: string) => {
                 :class="[
                   day.isToday && !(selectedDate === day.iso)
                     ? 'bg-brand-primarySoft text-brand-primary'
-                    : 'text-text-primary'
+                    : 'text-text-primary',
                 ]"
               >
                 {{ day.dayNumber }}
@@ -273,18 +263,12 @@ const handleToggleStatus = (id: string) => {
             </div>
 
             <div class="mb-1 flex items-center justify-center gap-0.5 h-3">
-              <span
-                v-if="day.hasOverdue"
-                class="calendar-indicator calendar-indicator--square"
-              />
+              <span v-if="day.hasOverdue" class="calendar-indicator calendar-indicator--square" />
               <span
                 v-if="day.hasInProgress"
                 class="calendar-indicator calendar-indicator--triangle"
               />
-              <span
-                v-if="day.showTodo"
-                class="calendar-indicator calendar-indicator--circle"
-              />
+              <span v-if="day.showTodo" class="calendar-indicator calendar-indicator--circle" />
             </div>
           </button>
         </div>
@@ -295,6 +279,7 @@ const handleToggleStatus = (id: string) => {
       <DayTasksList
         :date-label="selectedDate"
         :tasks="selectedTasks"
+        :category-map="categoryMap"
         @add="openCreate"
         @edit="openEdit"
         @toggle-status="handleToggleStatus"
