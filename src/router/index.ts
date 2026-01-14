@@ -37,6 +37,11 @@ const routes: RouteRecordRaw[] = [
     component: UserPage,
   },
   {
+    path: '/invite/:token',
+    name: 'invite',
+    component: () => import('@/pages/InvitePage.vue'),
+  },
+  {
     path: '/auth/callback',
     name: 'auth-callback',
     component: () => import('@/pages/AuthCallbackPage.vue'),

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useCategoriesStore } from '@/stores/categories'
 import { supabase } from '@/services/supabaseClient'
+import GroupsTab from '@/components/organisms/GroupsTab.vue'
 
 type TabKey = 'profile' | 'categories' | 'groups' | 'settings'
 
@@ -97,9 +99,23 @@ const saveTheme = () => {
   localStorage.setItem(THEME_KEY, themeMode.value)
 }
 
+const route = useRoute()
+const router = useRouter()
+
+const applyRedirectIfAuthed = async () => {
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+  if (!redirect) return
+
+  const { data } = await supabase.auth.getSession()
+  if (data.session) {
+    router.replace(redirect)
+  }
+}
+
 onMounted(async () => {
   loadTheme()
   await loadUser()
+  await applyRedirectIfAuthed()
 })
 </script>
 
@@ -236,21 +252,9 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div v-else-if="activeTab === 'groups'" class="section">
-        <h2 class="section__title">Groups</h2>
-
-        <div class="card">
-          <p class="muted">
-            Тут буде: мої групи (owner/member), створення, інвайти, список учасників, ролі.
-          </p>
-
-          <div class="placeholder">
-            <div class="ph-row"></div>
-            <div class="ph-row"></div>
-            <div class="ph-row"></div>
-          </div>
-        </div>
-      </div>
+<div v-else-if="activeTab === 'groups'" class="section">
+  <GroupsTab />
+</div>
 
       <div v-else class="section">
         <h2 class="section__title">Settings</h2>
