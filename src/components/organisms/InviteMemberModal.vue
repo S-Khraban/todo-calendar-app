@@ -17,21 +17,32 @@ const emit = defineEmits<{
 
 const email = ref('')
 const copied = ref(false)
+const localError = ref<string | null>(null)
 
 watch(
   () => props.modelValue,
-  (open) => {
+  async (open) => {
     if (open) {
       email.value = ''
       copied.value = false
+      localError.value = null
     }
   }
 )
 
 watch(
   () => props.inviteLink,
-  () => {
+  async (next) => {
     copied.value = false
+    localError.value = null
+    if (next) {
+      try {
+        await navigator.clipboard.writeText(next)
+        copied.value = true
+      } catch {
+        copied.value = false
+      }
+    }
   }
 )
 
@@ -41,18 +52,21 @@ const hasInvite = computed(() => !!props.inviteLink)
 const close = () => emit('update:modelValue', false)
 
 const submit = () => {
+  localError.value = null
   const trimmed = email.value.trim()
   if (!trimmed) return
   emit('submit', trimmed)
 }
 
 const copyInvite = async () => {
+  localError.value = null
   if (!props.inviteLink) return
   try {
     await navigator.clipboard.writeText(props.inviteLink)
     copied.value = true
   } catch {
     copied.value = false
+    localError.value = 'Copy failed'
   }
 }
 </script>
@@ -63,6 +77,8 @@ const copyInvite = async () => {
       <h3 class="modal-title">
         Invite member<span v-if="groupName"> to {{ groupName }}</span>
       </h3>
+
+      <p v-if="localError" class="error">{{ localError }}</p>
 
       <template v-if="hasInvite">
         <p class="success">Invite created.</p>
@@ -139,6 +155,11 @@ const copyInvite = async () => {
 .success {
   margin: 0 0 12px;
   opacity: 0.85;
+}
+
+.error {
+  margin: 0 0 12px;
+  color: #b00020;
 }
 
 .field {

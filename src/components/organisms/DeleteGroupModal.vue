@@ -1,45 +1,37 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, watch } from 'vue'
 
 interface Props {
   modelValue: boolean
   loading?: boolean
+  groupName?: string
 }
 
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
-  (e: 'submit', name: string): void
+  (e: 'confirm'): void
 }>()
 
-const name = ref('')
-
-watch(
-  () => props.modelValue,
-  (open) => {
-    if (open) name.value = ''
-  }
+const title = computed(() =>
+  props.groupName ? `Delete "${props.groupName}"?` : 'Delete group?'
 )
-
-const canSubmit = computed(() => name.value.trim().length > 0)
 
 const close = () => {
   if (props.loading) return
   emit('update:modelValue', false)
 }
 
-const submit = () => {
+const confirm = () => {
   if (props.loading) return
-  const trimmed = name.value.trim()
-  if (!trimmed) return
-  emit('submit', trimmed)
+  emit('confirm')
 }
 
 const onKeydown = (e: KeyboardEvent) => {
   if (!props.modelValue) return
   if (e.key === 'Escape') close()
-  if (e.key === 'Enter') submit()
+  if (e.key === 'Enter') confirm()
 }
 
 watch(
@@ -58,19 +50,11 @@ onBeforeUnmount(() => {
 <template>
   <div v-if="modelValue" class="modal-overlay" @click.self="close">
     <div class="modal" role="dialog" aria-modal="true">
-      <h3 class="modal-title">Create group</h3>
+      <h3 class="modal-title">{{ title }}</h3>
 
-      <label class="field">
-        <span class="field__label">Name</span>
-        <input
-          v-model="name"
-          class="input"
-          type="text"
-          placeholder="e.g. Family, Team, Poker"
-          :disabled="loading"
-          @keydown.enter.prevent="submit"
-        />
-      </label>
+      <p class="modal-text">
+        This action cannot be undone. The group, its members, and related tasks will be deleted.
+      </p>
 
       <div class="modal-actions">
         <button type="button" class="btn" :disabled="loading" @click="close">
@@ -79,11 +63,11 @@ onBeforeUnmount(() => {
 
         <button
           type="button"
-          class="btn btn-primary"
-          :disabled="loading || !canSubmit"
-          @click="submit"
+          class="btn btn-danger"
+          :disabled="loading"
+          @click="confirm"
         >
-          {{ loading ? 'Creating…' : 'Create' }}
+          {{ loading ? 'Deleting…' : 'Delete' }}
         </button>
       </div>
     </div>
@@ -111,23 +95,13 @@ onBeforeUnmount(() => {
 }
 
 .modal-title {
-  margin: 0 0 12px;
+  margin: 0 0 10px;
 }
 
-.field {
-  display: grid;
-  gap: 6px;
-}
-
-.field__label {
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-.input {
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 10px;
+.modal-text {
+  margin: 0;
+  opacity: 0.8;
+  line-height: 1.4;
 }
 
 .modal-actions {
@@ -150,7 +124,7 @@ onBeforeUnmount(() => {
   cursor: not-allowed;
 }
 
-.btn-primary {
-  border-color: #1a73e8;
+.btn-danger {
+  border-color: rgba(255, 0, 0, 0.35);
 }
 </style>

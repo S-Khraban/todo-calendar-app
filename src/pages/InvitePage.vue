@@ -24,6 +24,17 @@ onMounted(async () => {
 
   if (!isAuthed.value) {
     router.replace({ name: 'user', query: { redirect: route.fullPath } })
+    return
+  }
+
+  await groupsStore.fetchInvites()
+
+  const hasInvite = groupsStore.invites.some(
+    (i) => i.token === token.value
+  )
+
+  if (!hasInvite) {
+    error.value = 'Invite not found, expired, or not for your account.'
   }
 })
 
@@ -41,18 +52,35 @@ const accept = async () => {
   }
 
   isLoading.value = true
-  const { error: e } = await supabase.rpc('accept_group_invite', {
-    p_token: token.value,
-  })
+  const ok = await groupsStore.acceptInvite(token.value)
   isLoading.value = false
 
-  if (e) {
-    error.value = e.message
+  if (!ok) {
+    error.value = groupsStore.error ?? 'Failed to accept invite'
     return
   }
 
   success.value = true
-  await groupsStore.fetchMyGroups()
+  router.replace({ name: 'user' })
+}
+
+const decline = async () => {
+  error.value = null
+
+  if (!token.value) {
+    error.value = 'Invalid invite token.'
+    return
+  }
+
+  isLoading.value = true
+  const ok = await groupsStore.declineInvite(token.value)
+  isLoading.value = false
+
+  if (!ok) {
+    error.value = groupsStore.error ?? 'Failed to decline invite'
+    return
+  }
+
   router.replace({ name: 'user' })
 }
 </script>
@@ -68,17 +96,32 @@ const accept = async () => {
 
       <template v-else>
         <p v-if="error" class="invite__error">{{ error }}</p>
-        <p v-else-if="success" class="invite__success">Joined successfully.</p>
-        <p v-else class="invite__text">Accept the invitation to join the group.</p>
+        <p v-else-if="success" class="invite__success">
+          Joined successfully. Redirecting...
+        </p>
+        <p v-else class="invite__text">
+          Accept or decline the invitation to join the group.
+        </p>
 
-        <button
-          type="button"
-          class="btn"
-          :disabled="isLoading || success"
-          @click="accept"
-        >
-          {{ isLoading ? 'Accepting...' : 'Accept' }}
-        </button>
+        <div v-if="!success" class="actions">
+          <button
+            type="button"
+            class="btn"
+            :disabled="isLoading"
+            @click="decline"
+          >
+            Decline
+          </button>
+
+          <button
+            type="button"
+            class="btn"
+            :disabled="isLoading"
+            @click="accept"
+          >
+            {{ isLoading ? 'Processing...' : 'Accept' }}
+          </button>
+        </div>
       </template>
     </template>
   </section>
@@ -110,6 +153,11 @@ const accept = async () => {
 .invite__success {
   margin: 0 0 12px;
   opacity: 0.9;
+}
+
+.actions {
+  display: inline-flex;
+  gap: 8px;
 }
 
 .btn {

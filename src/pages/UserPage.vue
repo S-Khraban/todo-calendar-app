@@ -252,9 +252,9 @@ onMounted(async () => {
         </div>
       </div>
 
-<div v-else-if="activeTab === 'groups'" class="section">
-  <GroupsTab />
-</div>
+      <div v-else-if="activeTab === 'groups'" class="section">
+        <GroupsTab />
+      </div>
 
       <div v-else class="section">
         <h2 class="section__title">Settings</h2>
