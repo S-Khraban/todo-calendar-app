@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { supabase } from '@/services/supabaseClient'
 
-type GroupRole = 'owner' | 'admin' | 'member'
+export type GroupRole = 'owner' | 'admin' | 'member'
 
 export type GroupListItem = {
   groupId: string
@@ -20,6 +20,13 @@ export type GroupInviteItem = {
   inviterId: string | null
   inviterEmail: string | null
   inviterName: string | null
+}
+
+export type GroupMemberItem = {
+  userId: string
+  email: string | null
+  name: string | null
+  role: GroupRole
 }
 
 type GroupMemberRow = {
@@ -42,9 +49,20 @@ export const useGroupsStore = defineStore('groups', () => {
     isLoading.value = true
     error.value = null
 
+    const { data: auth, error: eAuth } = await supabase.auth.getUser()
+    const user = auth?.user
+
+    if (eAuth || !user) {
+      error.value = eAuth?.message ?? 'Not authenticated'
+      groups.value = []
+      isLoading.value = false
+      return
+    }
+
     const { data: members, error: e1 } = await supabase
       .from('group_members')
       .select('role, group_id')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
     if (e1) {
@@ -214,6 +232,54 @@ export const useGroupsStore = defineStore('groups', () => {
     return true
   }
 
+  const fetchGroupMembers = async (groupId: string) => {
+    const { data, error: e } = await supabase.rpc('get_group_members', { p_group_id: groupId })
+
+    if (e) return { ok: false as const, error: e.message, data: [] as GroupMemberItem[] }
+
+    const mapped: GroupMemberItem[] = (data ?? []).map((row: any) => ({
+      userId: row.user_id,
+      email: row.email ?? null,
+      name: row.name ?? row.full_name ?? null,
+      role: row.role as GroupRole,
+    }))
+
+    return { ok: true as const, data: mapped }
+  }
+
+  const renameGroup = async (groupId: string, name: string) => {
+    if (!name) return { ok: false as const, error: 'Name is required' }
+
+    const { error: e } = await supabase.rpc('rename_group', {
+      p_group_id: groupId,
+      p_name: name,
+    })
+
+    if (e) return { ok: false as const, error: e.message }
+    return { ok: true as const }
+  }
+
+  const setMemberRole = async (groupId: string, userId: string, role: GroupRole) => {
+    const { error: e } = await supabase.rpc('set_group_member_role', {
+      p_group_id: groupId,
+      p_user_id: userId,
+      p_role: role,
+    })
+
+    if (e) return { ok: false as const, error: e.message }
+    return { ok: true as const }
+  }
+
+  const transferOwnership = async (groupId: string, newOwnerId: string) => {
+    const { error: e } = await supabase.rpc('transfer_group_ownership', {
+      p_group_id: groupId,
+      p_new_owner_id: newOwnerId,
+    })
+
+    if (e) return { ok: false as const, error: e.message }
+    return { ok: true as const }
+  }
+
   return {
     groups,
     invites,
@@ -226,5 +292,9 @@ export const useGroupsStore = defineStore('groups', () => {
     acceptInvite,
     declineInvite,
     deleteGroup,
+    fetchGroupMembers,
+    renameGroup,
+    setMemberRole,
+    transferOwnership,
   }
 })

@@ -4,12 +4,14 @@ import { useGroupsStore } from '@/stores/groups'
 import CreateGroupModal from '@/components/organisms/CreateGroupModal.vue'
 import InviteMemberModal from '@/components/organisms/InviteMemberModal.vue'
 import DeleteGroupModal from '@/components/organisms/DeleteGroupModal.vue'
+import GroupSettingsModal from '@/components/organisms/GroupSettingsModal.vue'
 
 const groupsStore = useGroupsStore()
 
 const isCreateOpen = ref(false)
 const isInviteOpen = ref(false)
 const isDeleteOpen = ref(false)
+const isSettingsOpen = ref(false)
 
 const activeInviteGroupId = ref<string | null>(null)
 const activeInviteGroupName = ref<string>('')
@@ -18,6 +20,10 @@ const lastInviteToken = ref<string | null>(null)
 
 const activeDeleteGroupId = ref<string | null>(null)
 const activeDeleteGroupName = ref<string>('')
+
+const activeSettingsGroupId = ref<string | null>(null)
+const activeSettingsGroupName = ref<string>('')
+const activeSettingsMyRole = ref<'owner' | 'admin' | 'member'>('member')
 
 onMounted(() => {
   groupsStore.fetchMyGroups()
@@ -32,6 +38,7 @@ const roleLabel = (role: string) => {
 
 const canInvite = (role: string) => role === 'owner' || role === 'admin'
 const canDelete = (role: string) => role === 'owner'
+const canManage = (role: string) => role === 'owner' || role === 'admin'
 
 const openCreate = () => {
   isCreateOpen.value = true
@@ -74,6 +81,13 @@ const confirmDelete = async () => {
     activeDeleteGroupId.value = null
     activeDeleteGroupName.value = ''
   }
+}
+
+const openSettings = (groupId: string, groupName: string, myRole: 'owner' | 'admin' | 'member') => {
+  activeSettingsGroupId.value = groupId
+  activeSettingsGroupName.value = groupName
+  activeSettingsMyRole.value = myRole
+  isSettingsOpen.value = true
 }
 
 const acceptInvite = async (token: string) => {
@@ -157,6 +171,16 @@ const inviteSubtitle = (inv: any) => {
 
           <div class="actions">
             <button
+              v-if="canManage(g.role)"
+              type="button"
+              class="btn"
+              :disabled="groupsStore.isLoading"
+              @click="openSettings(g.groupId, g.name, g.role)"
+            >
+              Settings
+            </button>
+
+            <button
               type="button"
               class="btn"
               :disabled="groupsStore.isLoading || !canInvite(g.role)"
@@ -199,6 +223,15 @@ const inviteSubtitle = (inv: any) => {
       :loading="groupsStore.isLoading"
       :group-name="activeDeleteGroupName"
       @confirm="confirmDelete"
+    />
+
+    <GroupSettingsModal
+      v-model="isSettingsOpen"
+      :group-id="activeSettingsGroupId"
+      :group-name="activeSettingsGroupName"
+      :my-role="activeSettingsMyRole"
+      :loading="groupsStore.isLoading"
+      @updated="groupsStore.fetchMyGroups()"
     />
   </section>
 </template>
