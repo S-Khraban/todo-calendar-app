@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import { useTasksStore } from '@/stores/tasks'
 import { useCategoriesStore } from '@/stores/categories'
-import type { Task, TaskStatus } from '@/types'
+import type { Task, TaskStatus, TaskPriority } from '@/types'
 import TaskModal from '@/components/organisms/TaskModal.vue'
 import { toLocalIso, formatFullDateUA } from '@/utils/date'
 
@@ -14,7 +14,7 @@ const { visibleCategories } = storeToRefs(categoriesStore)
 const route = useRoute()
 
 onMounted(async () => {
-  await categoriesStore.fetchCategories()
+  await Promise.all([categoriesStore.fetchCategories(), tasksStore.load()])
 })
 
 const categoryMap = computed<Record<string, string>>(() => {
@@ -25,23 +25,23 @@ const categoryMap = computed<Record<string, string>>(() => {
   return map
 })
 
-const getCategoryLabel = (task: Task) => {
-  const id = task.categoryId
+const getBadgeLabel = (task: Task) => {
+  const groupId = (task as any).groupId ?? (task as any).group_id ?? null
+  if (groupId) {
+    const groupName = (task as any).groupName ?? (task as any).group_name ?? null
+    return groupName || 'Group'
+  }
+
+  const id = task.categoryId ?? null
   if (!id) return '—'
   return categoryMap.value[id] ?? '—'
 }
 
 const todayIso = toLocalIso(new Date())
 
-type TaskPriority = 'low' | 'medium' | 'high'
-
-const priorityOrder: Record<TaskPriority, number> = {
-  high: 0,
-  medium: 1,
-  low: 2,
-}
-
-const getPriority = (p?: TaskPriority) => p ?? 'low'
+type UIPrio = 'low' | 'medium' | 'high'
+const priorityOrder: Record<UIPrio, number> = { high: 0, medium: 1, low: 2 }
+const getPriority = (p?: UIPrio) => p ?? 'low'
 
 const currentDate = computed(() => {
   const param = route.params.date as string | undefined
@@ -53,8 +53,8 @@ const tasksForDate = computed(() =>
     .tasksByDate(currentDate.value)
     .slice()
     .sort((a, b) => {
-      const pa = priorityOrder[getPriority(a.priority)]
-      const pb = priorityOrder[getPriority(b.priority)]
+      const pa = priorityOrder[getPriority(a.priority as UIPrio | undefined)]
+      const pb = priorityOrder[getPriority(b.priority as UIPrio | undefined)]
       if (pa !== pb) return pa - pb
       return (a.startTime || '00:00').localeCompare(b.startTime || '00:00')
     }),
@@ -78,6 +78,8 @@ type SavePayload = {
   categoryId: string | null
   status: TaskStatus
   priority?: TaskPriority
+  groupId: string | null
+  assignedUserId?: string | null
 }
 
 const openCreate = () => {
@@ -94,36 +96,11 @@ const openEdit = (task: Task) => {
 
 const handleSaveTask = async (payload: SavePayload) => {
   if (payload.id) {
-    const existing = tasksStore.tasks.find(t => t.id === payload.id)
-    if (!existing) return
-
-    const updated: Task = {
-      ...existing,
-      title: payload.title.trim() || existing.title,
-      description: payload.description ?? null,
-      date: payload.date,
-      endDate: payload.endDate ?? null,
-      startTime: payload.startTime,
-      endTime: payload.endTime,
-      categoryId: payload.categoryId ?? null,
-      status: payload.status,
-      priority: payload.priority ?? existing.priority ?? 'low',
-    }
-
-    await tasksStore.updateTask(updated)
+    await tasksStore.updateTask(payload)
     return
   }
 
-  await tasksStore.addTask({
-    title: payload.title.trim(),
-    description: payload.description ?? null,
-    date: payload.date,
-    endDate: payload.endDate ?? null,
-    startTime: payload.startTime,
-    endTime: payload.endTime,
-    categoryId: payload.categoryId ?? null,
-    priority: payload.priority ?? 'low',
-  } as any)
+  await tasksStore.addTask(payload)
 }
 
 const toggleStatus = (task: Task) => {
@@ -163,8 +140,12 @@ const toggleStatus = (task: Task) => {
           :key="task.id"
           class="flex items-center gap-3 px-3 py-2 rounded-md border border-border-soft bg-app-surface shadow-sm"
           :class="[
-            getPriority(task.priority) === 'high' ? 'ring-1 ring-amber-400/60 border-amber-300/60' : '',
-            getPriority(task.priority) === 'medium' ? 'border-border-soft/80' : '',
+            getPriority(task.priority as UIPrio | undefined) === 'high'
+              ? 'ring-1 ring-amber-400/60 border-amber-300/60'
+              : '',
+            getPriority(task.priority as UIPrio | undefined) === 'medium'
+              ? 'border-border-soft/80'
+              : '',
           ]"
         >
           <input
@@ -178,12 +159,16 @@ const toggleStatus = (task: Task) => {
             <div
               :class="[
                 'truncate',
-                getPriority(task.priority) === 'medium' ? 'font-semibold' : 'font-medium',
-                task.status === 'done' ? 'line-through text-text-muted' : 'text-text-primary',
+                getPriority(task.priority as UIPrio | undefined) === 'medium'
+                  ? 'font-semibold'
+                  : 'font-medium',
+                task.status === 'done'
+                  ? 'line-through text-text-muted'
+                  : 'text-text-primary',
               ]"
             >
               <span
-                v-if="getPriority(task.priority) === 'high'"
+                v-if="getPriority(task.priority as UIPrio | undefined) === 'high'"
                 class="mr-1 text-amber-500"
                 aria-hidden="true"
               >
@@ -201,14 +186,10 @@ const toggleStatus = (task: Task) => {
           </div>
 
           <span class="text-[11px] px-2 py-0.5 rounded-full bg-brand-primarySoft text-brand-primary shrink-0">
-            {{ getCategoryLabel(task) }}
+            {{ getBadgeLabel(task) }}
           </span>
 
-          <button
-            type="button"
-            class="text-xs text-brand-primary"
-            @click="openEdit(task)"
-          >
+          <button type="button" class="text-xs text-brand-primary" @click="openEdit(task)">
             Edit
           </button>
         </li>

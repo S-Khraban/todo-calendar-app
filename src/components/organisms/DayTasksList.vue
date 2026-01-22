@@ -2,10 +2,11 @@
 import { computed } from 'vue'
 import type { Task } from '@/types'
 
-const { dateLabel, tasks, categoryMap } = defineProps<{
+const { dateLabel, tasks, categoryMap, getBadgeLabel } = defineProps<{
   dateLabel: string
   tasks: Task[]
   categoryMap: Record<string, string>
+  getBadgeLabel?: (task: Task) => string
 }>()
 
 const emit = defineEmits<{
@@ -46,6 +47,10 @@ const getCategoryLabel = (task: Task) => {
   const id = task.categoryId
   if (!id) return '—'
   return categoryMap[id] ?? '—'
+}
+
+const getLabel = (task: Task) => {
+  return getBadgeLabel ? getBadgeLabel(task) : getCategoryLabel(task)
 }
 </script>
 
@@ -112,7 +117,7 @@ const getCategoryLabel = (task: Task) => {
         </div>
 
         <span class="text-[11px] px-2 py-0.5 rounded-full bg-brand-primarySoft text-brand-primary shrink-0">
-          {{ getCategoryLabel(task) }}
+          {{ getLabel(task) }}
         </span>
       </li>
     </ul>

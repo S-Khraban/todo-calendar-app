@@ -42,6 +42,7 @@ type GroupRow = {
 export const useGroupsStore = defineStore('groups', () => {
   const groups = ref<GroupListItem[]>([])
   const invites = ref<GroupInviteItem[]>([])
+  const membersByGroupId = ref<Record<string, GroupMemberItem[]>>({})
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
@@ -73,7 +74,7 @@ export const useGroupsStore = defineStore('groups', () => {
     }
 
     const memberRows = (members ?? []) as GroupMemberRow[]
-    const groupIds = Array.from(new Set(memberRows.map((m) => m.group_id)))
+    const groupIds = Array.from(new Set(memberRows.map(m => m.group_id)))
 
     if (groupIds.length === 0) {
       groups.value = []
@@ -94,16 +95,16 @@ export const useGroupsStore = defineStore('groups', () => {
     }
 
     const groupMap = new Map<string, string>(
-      ((groupRows ?? []) as GroupRow[]).map((g) => [g.id, g.name])
+      ((groupRows ?? []) as GroupRow[]).map(g => [g.id, g.name]),
     )
 
     const roleByGroup = new Map<string, GroupRole>()
-    memberRows.forEach((m) => {
+    memberRows.forEach(m => {
       if (!roleByGroup.has(m.group_id)) roleByGroup.set(m.group_id, m.role)
     })
 
     groups.value = groupIds
-      .map((id) => {
+      .map(id => {
         const name = groupMap.get(id)
         const role = roleByGroup.get(id)
         if (!name || !role) return null
@@ -146,9 +147,7 @@ export const useGroupsStore = defineStore('groups', () => {
     isLoading.value = true
     error.value = null
 
-    const { data, error: e } = await supabase.rpc('create_group', {
-      p_name: name,
-    })
+    const { data, error: e } = await supabase.rpc('create_group', { p_name: name })
 
     if (e) {
       error.value = e.message
@@ -227,12 +226,18 @@ export const useGroupsStore = defineStore('groups', () => {
       return false
     }
 
-    await fetchMyGroups()
+    groups.value = groups.value.filter(g => g.groupId !== groupId)
+    delete membersByGroupId.value[groupId]
+
     isLoading.value = false
     return true
   }
 
-  const fetchGroupMembers = async (groupId: string) => {
+  const fetchGroupMembers = async (groupId: string, force = false) => {
+    if (!force && membersByGroupId.value[groupId]?.length) {
+      return { ok: true as const, data: membersByGroupId.value[groupId]! }
+    }
+
     const { data, error: e } = await supabase.rpc('get_group_members', { p_group_id: groupId })
 
     if (e) return { ok: false as const, error: e.message, data: [] as GroupMemberItem[] }
@@ -244,6 +249,7 @@ export const useGroupsStore = defineStore('groups', () => {
       role: row.role as GroupRole,
     }))
 
+    membersByGroupId.value[groupId] = mapped
     return { ok: true as const, data: mapped }
   }
 
@@ -256,6 +262,10 @@ export const useGroupsStore = defineStore('groups', () => {
     })
 
     if (e) return { ok: false as const, error: e.message }
+
+    const g = groups.value.find(x => x.groupId === groupId)
+    if (g) g.name = name
+
     return { ok: true as const }
   }
 
@@ -267,6 +277,14 @@ export const useGroupsStore = defineStore('groups', () => {
     })
 
     if (e) return { ok: false as const, error: e.message }
+
+    const list = membersByGroupId.value[groupId]
+    if (list) {
+      const m = list.find(x => x.userId === userId)
+      if (m) m.role = role
+    }
+
+    await fetchMyGroups()
     return { ok: true as const }
   }
 
@@ -277,12 +295,15 @@ export const useGroupsStore = defineStore('groups', () => {
     })
 
     if (e) return { ok: false as const, error: e.message }
+
+    await Promise.all([fetchMyGroups(), fetchGroupMembers(groupId, true)])
     return { ok: true as const }
   }
 
   return {
     groups,
     invites,
+    membersByGroupId,
     isLoading,
     error,
     fetchMyGroups,

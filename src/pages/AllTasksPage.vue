@@ -3,17 +3,20 @@ import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useTasksStore } from '@/stores/tasks'
 import { useCategoriesStore } from '@/stores/categories'
-import type { TaskStatus, Task } from '@/types'
+import { useGroupsStore } from '@/stores/groups'
+import type { TaskStatus, Task, TaskPriority } from '@/types'
 import Button from '@/components/atoms/Button.vue'
 import TaskModal from '@/components/organisms/TaskModal.vue'
 import { toLocalIso, formatIsoShort } from '@/utils/date'
 
 const tasksStore = useTasksStore()
 const categoriesStore = useCategoriesStore()
+const groupsStore = useGroupsStore()
 const { visibleCategories } = storeToRefs(categoriesStore)
+const { groups } = storeToRefs(groupsStore)
 
 onMounted(async () => {
-  await categoriesStore.fetchCategories()
+  await Promise.all([categoriesStore.fetchCategories(), groupsStore.fetchMyGroups(), tasksStore.load()])
 })
 
 const categoryMap = computed<Record<string, string>>(() => {
@@ -24,7 +27,19 @@ const categoryMap = computed<Record<string, string>>(() => {
   return map
 })
 
-const getCategoryLabel = (categoryId: string | null) => {
+const groupMap = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const g of groups.value ?? []) {
+    map[g.groupId] = g.name
+  }
+  return map
+})
+
+const getBadgeLabel = (task: Task) => {
+  const groupId = (task as any).groupId ?? (task as any).group_id ?? null
+  if (groupId) return groupMap.value[groupId] ?? 'Group'
+
+  const categoryId = task.categoryId ?? null
   if (!categoryId) return '—'
   return categoryMap.value[categoryId] ?? '—'
 }
@@ -36,45 +51,28 @@ const isTaskModalOpen = ref(false)
 const editingTask = ref<Task | null>(null)
 const modalDate = ref<string>(todayIso)
 
-type TaskPriority = 'low' | 'medium' | 'high'
+type UIPriority = 'low' | 'medium' | 'high'
 
-type SavePayload = {
-  id?: string
-  title: string
-  description?: string
-  date: string
-  endDate?: string
-  startTime?: string
-  endTime?: string
-  categoryId: string | null
-  status: TaskStatus
-  priority?: TaskPriority
-}
-
-const priorityOrder: Record<TaskPriority, number> = {
+const priorityOrder: Record<UIPriority, number> = {
   high: 0,
   medium: 1,
   low: 2,
 }
 
-const getPriority = (p?: TaskPriority) => p ?? 'low'
+const getPriority = (p?: UIPriority) => p ?? 'low'
 
 const filteredTasks = computed(() => {
   return tasksStore.tasks
     .filter(task => {
-      if (statusFilter.value !== 'all' && task.status !== statusFilter.value) {
-        return false
-      }
+      if (statusFilter.value !== 'all' && task.status !== statusFilter.value) return false
       return true
     })
     .slice()
     .sort((a, b) => {
-      if (a.date !== b.date) {
-        return a.date.localeCompare(b.date)
-      }
+      if (a.date !== b.date) return a.date.localeCompare(b.date)
 
-      const pa = priorityOrder[getPriority(a.priority)]
-      const pb = priorityOrder[getPriority(b.priority)]
+      const pa = priorityOrder[getPriority(a.priority as UIPriority | undefined)]
+      const pb = priorityOrder[getPriority(b.priority as UIPriority | undefined)]
       if (pa !== pb) return pa - pb
 
       const aTime = a.startTime || '00:00'
@@ -95,38 +93,28 @@ const startEdit = (task: Task) => {
   isTaskModalOpen.value = true
 }
 
+type SavePayload = {
+  id?: string
+  title: string
+  description?: string
+  date: string
+  endDate?: string
+  startTime?: string
+  endTime?: string
+  categoryId: string | null
+  status: TaskStatus
+  priority?: TaskPriority
+  groupId: string | null
+  assignedUserId?: string | null
+}
+
 const handleSaveTask = async (payload: SavePayload) => {
   if (payload.id) {
-    const existing = tasksStore.tasks.find(t => t.id === payload.id)
-    if (!existing) return
-
-    const updated: Task = {
-      ...existing,
-      title: payload.title.trim() || existing.title,
-      description: payload.description ?? null,
-      date: payload.date,
-      endDate: payload.endDate ?? null,
-      startTime: payload.startTime,
-      endTime: payload.endTime,
-      categoryId: payload.categoryId ?? null,
-      status: payload.status,
-      priority: payload.priority ?? existing.priority ?? 'low',
-    }
-
-    await tasksStore.updateTask(updated)
+    await tasksStore.updateTask(payload as any)
     return
   }
 
-  await tasksStore.addTask({
-    title: payload.title.trim(),
-    description: payload.description ?? null,
-    date: payload.date,
-    endDate: payload.endDate ?? null,
-    startTime: payload.startTime,
-    endTime: payload.endTime,
-    categoryId: payload.categoryId ?? null,
-    priority: payload.priority ?? 'low',
-  } as any)
+  await tasksStore.addTask(payload as any)
 }
 </script>
 
@@ -165,8 +153,12 @@ const handleSaveTask = async (payload: SavePayload) => {
         :key="task.id"
         class="grid grid-cols-[1fr,auto] gap-2 items-start px-3 py-2 rounded-md border border-border-soft bg-app-surface shadow-sm cursor-pointer"
         :class="[
-          getPriority(task.priority) === 'high' ? 'ring-1 ring-amber-400/60 border-amber-300/60' : '',
-          getPriority(task.priority) === 'medium' ? 'border-border-soft/80' : '',
+          getPriority(task.priority as UIPriority | undefined) === 'high'
+            ? 'ring-1 ring-amber-400/60 border-amber-300/60'
+            : '',
+          getPriority(task.priority as UIPriority | undefined) === 'medium'
+            ? 'border-border-soft/80'
+            : '',
         ]"
         @click="startEdit(task)"
       >
@@ -174,12 +166,14 @@ const handleSaveTask = async (payload: SavePayload) => {
           <div
             :class="[
               'truncate',
-              getPriority(task.priority) === 'medium' ? 'font-semibold' : 'font-medium',
+              getPriority(task.priority as UIPriority | undefined) === 'medium'
+                ? 'font-semibold'
+                : 'font-medium',
               task.status === 'done' ? 'line-through text-text-muted' : 'text-text-primary',
             ]"
           >
             <span
-              v-if="getPriority(task.priority) === 'high'"
+              v-if="getPriority(task.priority as UIPriority | undefined) === 'high'"
               class="mr-1 text-amber-500"
               aria-hidden="true"
               >★</span
@@ -205,7 +199,7 @@ const handleSaveTask = async (payload: SavePayload) => {
 
         <div class="flex flex-col items-end gap-1">
           <span class="text-[11px] px-2 py-0.5 rounded-full bg-brand-primarySoft text-brand-primary">
-            {{ getCategoryLabel(task.categoryId) }}
+            {{ getBadgeLabel(task) }}
           </span>
 
           <Button

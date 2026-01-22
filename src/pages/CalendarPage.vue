@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useTasksStore } from '@/stores/tasks'
 import { useCategoriesStore } from '@/stores/categories'
-import type { Task, TaskStatus } from '@/types'
+import type { Task, TaskStatus, TaskPriority } from '@/types'
 import TaskModal from '@/components/organisms/TaskModal.vue'
 import DayTasksList from '@/components/organisms/DayTasksList.vue'
 import { toLocalIso, formatMonthLabel } from '@/utils/date'
@@ -14,7 +14,7 @@ const categoriesStore = useCategoriesStore()
 const { visibleCategories } = storeToRefs(categoriesStore)
 
 onMounted(async () => {
-  await categoriesStore.fetchCategories()
+  await Promise.all([categoriesStore.fetchCategories(), tasksStore.load()])
 })
 
 const categoryMap = computed<Record<string, string>>(() => {
@@ -24,6 +24,18 @@ const categoryMap = computed<Record<string, string>>(() => {
   }
   return map
 })
+
+const getBadgeLabel = (task: Task) => {
+  const groupId = (task as any).groupId ?? (task as any).group_id ?? null
+  if (groupId) {
+    const groupName = (task as any).groupName ?? (task as any).group_name ?? null
+    return groupName || 'Group'
+  }
+
+  const id = task.categoryId ?? null
+  if (!id) return '—'
+  return categoryMap.value[id] ?? '—'
+}
 
 const today = new Date()
 const todayIso = toLocalIso(today)
@@ -98,23 +110,23 @@ const monthDays = computed<DayCell[]>(() => {
   return cells
 })
 
-type TaskPriority = 'low' | 'medium' | 'high'
+type UIPriority = 'low' | 'medium' | 'high'
 
-const priorityOrder: Record<TaskPriority, number> = {
+const priorityOrder: Record<UIPriority, number> = {
   high: 0,
   medium: 1,
   low: 2,
 }
 
-const getPriority = (p?: TaskPriority) => p ?? 'low'
+const getPriority = (p?: UIPriority) => p ?? 'low'
 
 const selectedTasks = computed(() =>
   tasksStore
     .tasksByDate(selectedDate.value)
     .slice()
     .sort((a, b) => {
-      const pa = priorityOrder[getPriority(a.priority)]
-      const pb = priorityOrder[getPriority(b.priority)]
+      const pa = priorityOrder[getPriority(a.priority as UIPriority | undefined)]
+      const pb = priorityOrder[getPriority(b.priority as UIPriority | undefined)]
       if (pa !== pb) return pa - pb
 
       const aTime = a.startTime || '00:00'
@@ -153,6 +165,8 @@ type SavePayload = {
   categoryId: string | null
   status: TaskStatus
   priority?: TaskPriority
+  groupId: string | null
+  assignedUserId?: string | null
 }
 
 const openCreate = () => {
@@ -169,36 +183,11 @@ const openEdit = (task: Task) => {
 
 const handleSaveTask = async (payload: SavePayload) => {
   if (payload.id) {
-    const existing = tasksStore.tasks.find(t => t.id === payload.id)
-    if (!existing) return
-
-    const updated: Task = {
-      ...existing,
-      title: payload.title.trim() || existing.title,
-      description: payload.description ?? null,
-      date: payload.date,
-      endDate: payload.endDate ?? null,
-      startTime: payload.startTime,
-      endTime: payload.endTime,
-      categoryId: payload.categoryId ?? null,
-      status: payload.status,
-      priority: payload.priority ?? existing.priority ?? 'low',
-    }
-
-    await tasksStore.updateTask(updated)
+    await tasksStore.updateTask(payload)
     return
   }
 
-  await tasksStore.addTask({
-    title: payload.title.trim(),
-    description: payload.description ?? null,
-    date: payload.date,
-    endDate: payload.endDate ?? null,
-    startTime: payload.startTime,
-    endTime: payload.endTime,
-    categoryId: payload.categoryId ?? null,
-    priority: payload.priority ?? 'low',
-  } as any)
+  await tasksStore.addTask(payload)
 }
 
 const handleToggleStatus = (id: string) => {
@@ -280,6 +269,7 @@ const handleToggleStatus = (id: string) => {
         :date-label="selectedDate"
         :tasks="selectedTasks"
         :category-map="categoryMap"
+        :get-badge-label="getBadgeLabel"
         @add="openCreate"
         @edit="openEdit"
         @toggle-status="handleToggleStatus"

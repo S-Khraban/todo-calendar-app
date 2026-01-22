@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useTasksStore } from '@/stores/tasks'
-import type { Task } from '@/types'
+import { useCategoriesStore } from '@/stores/categories'
+import type { Task, TaskStatus, TaskPriority } from '@/types'
 
 import DateBadge from '@/components/atoms/DateBadge.vue'
 import WeekMultiDayRow from '@/components/organisms/WeekMultiDayRow.vue'
 import TaskModal from '@/components/organisms/TaskModal.vue'
 
 const tasksStore = useTasksStore()
+const categoriesStore = useCategoriesStore()
+const { visibleCategories } = storeToRefs(categoriesStore)
 const router = useRouter()
 
 const toLocalIso = (d: Date) => {
@@ -16,6 +20,30 @@ const toLocalIso = (d: Date) => {
   const month = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+onMounted(async () => {
+  await Promise.all([categoriesStore.fetchCategories(), tasksStore.load()])
+})
+
+const categoryMap = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const c of visibleCategories.value ?? []) {
+    map[c.id] = c.name
+  }
+  return map
+})
+
+const getBadgeLabel = (task: Task) => {
+  const groupId = (task as any).groupId ?? (task as any).group_id ?? null
+  if (groupId) {
+    const groupName = (task as any).groupName ?? (task as any).group_name ?? null
+    return groupName || 'Group'
+  }
+
+  const id = task.categoryId ?? null
+  if (!id) return '—'
+  return categoryMap.value[id] ?? '—'
 }
 
 const today = new Date()
@@ -45,15 +73,15 @@ const weekDays: WeekDay[] = Array.from({ length: 7 }, (_, i) => {
 const weekStartIso = weekDays[0]!.iso
 const weekEndIso = weekDays[6]!.iso
 
-type TaskPriority = 'low' | 'medium' | 'high'
+type UIPriority = 'low' | 'medium' | 'high'
 
-const priorityOrder: Record<TaskPriority, number> = {
+const priorityOrder: Record<UIPriority, number> = {
   high: 0,
   medium: 1,
   low: 2,
 }
 
-const getPriority = (p?: TaskPriority) => p ?? 'low'
+const getPriority = (p?: UIPriority) => p ?? 'low'
 
 const tasksByDay = computed(() =>
   weekDays.map(dayInfo => {
@@ -62,8 +90,8 @@ const tasksByDay = computed(() =>
       .filter(task => !(task.endDate && task.endDate !== task.date))
       .slice()
       .sort((a, b) => {
-        const pa = priorityOrder[getPriority(a.priority as TaskPriority | undefined)]
-        const pb = priorityOrder[getPriority(b.priority as TaskPriority | undefined)]
+        const pa = priorityOrder[getPriority(a.priority as UIPriority | undefined)]
+        const pb = priorityOrder[getPriority(b.priority as UIPriority | undefined)]
         if (pa !== pb) return pa - pb
 
         const aTime = a.startTime || '00:00'
@@ -97,33 +125,20 @@ type SavePayload = {
   endDate?: string
   startTime?: string
   endTime?: string
-  category: Task['category']
-  status: Task['status']
+  categoryId: string | null
+  status: TaskStatus
   priority?: TaskPriority
+  groupId: string | null
+  assignedUserId?: string | null
 }
 
-const handleSaveTask = (payload: SavePayload) => {
+const handleSaveTask = async (payload: SavePayload) => {
   if (payload.id) {
-    const existing = tasksStore.tasks.find(t => t.id === payload.id)
-    if (!existing) return
-
-    const { id, ...rest } = payload
-
-    const updated: Task = {
-      ...existing,
-      ...rest,
-      id: id!,
-      priority: payload.priority ?? (existing.priority as TaskPriority | undefined) ?? 'low',
-    }
-
-    tasksStore.updateTask(updated)
-  } else {
-    const { id, ...rest } = payload
-    tasksStore.addTask({
-      ...rest,
-      priority: payload.priority ?? 'low',
-    })
+    await tasksStore.updateTask(payload as any)
+    return
   }
+
+  await tasksStore.addTask(payload as any)
 }
 </script>
 
@@ -169,45 +184,49 @@ const handleSaveTask = (payload: SavePayload) => {
         :class="{ 'pd4u-week-cell--today': col.day.iso === todayIso }"
         @click="openDay(col.day.iso)"
       >
-        <div
-          v-if="col.tasks.length === 0"
-          class="pd4u-week-empty"
-        >
+        <div v-if="col.tasks.length === 0" class="pd4u-week-empty">
           No tasks
         </div>
 
-        <ul
-          v-else
-          class="pd4u-week-tasks"
-        >
+        <ul v-else class="pd4u-week-tasks">
           <li
             v-for="task in col.tasks"
             :key="task.id"
             class="pd4u-week-task"
             :class="[
-              getPriority(task.priority as TaskPriority | undefined) === 'high' ? 'pd4u-week-task--high' : '',
-              getPriority(task.priority as TaskPriority | undefined) === 'medium' ? 'pd4u-week-task--medium' : '',
+              getPriority(task.priority as UIPriority | undefined) === 'high'
+                ? 'pd4u-week-task--high'
+                : '',
+              getPriority(task.priority as UIPriority | undefined) === 'medium'
+                ? 'pd4u-week-task--medium'
+                : '',
             ]"
             @click.stop="openEditTask(task)"
           >
-            <div
-              v-if="task.startTime || task.endTime"
-              class="pd4u-week-task__time"
-            >
+            <div v-if="task.startTime || task.endTime" class="pd4u-week-task__time">
               {{ task.startTime || '??:??' }} – {{ task.endTime || '...' }}
             </div>
 
             <div
               :class="[
                 'pd4u-week-task__title',
-                getPriority(task.priority as TaskPriority | undefined) === 'medium' ? 'pd4u-week-task__title--medium' : '',
-                task.status === 'done'
-                  ? 'line-through text-text-muted'
-                  : 'text-text-primary',
+                getPriority(task.priority as UIPriority | undefined) === 'medium'
+                  ? 'pd4u-week-task__title--medium'
+                  : '',
+                task.status === 'done' ? 'line-through text-text-muted' : 'text-text-primary',
               ]"
             >
-              <span v-if="getPriority(task.priority as TaskPriority | undefined) === 'high'" class="pd4u-week-task__star" aria-hidden="true">★</span>
+              <span
+                v-if="getPriority(task.priority as UIPriority | undefined) === 'high'"
+                class="pd4u-week-task__star"
+                aria-hidden="true"
+                >★</span
+              >
               {{ task.title }}
+            </div>
+
+            <div class="pd4u-week-task__badge">
+              {{ getBadgeLabel(task) }}
             </div>
           </li>
         </ul>
@@ -313,5 +332,15 @@ const handleSaveTask = (payload: SavePayload) => {
 
 .pd4u-week-task__title--medium {
   font-weight: 600;
+}
+
+.pd4u-week-task__badge {
+  margin-top: 2px;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  align-self: flex-start;
+  background: var(--pd4u-pill-bg, #eef2ff);
+  color: var(--pd4u-pill-text, #2563eb);
 }
 </style>
