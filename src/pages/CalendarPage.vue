@@ -1,20 +1,25 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useTasksStore } from '@/stores/tasks'
 import { useCategoriesStore } from '@/stores/categories'
+import { useGroupsStore } from '@/stores/groups'
 import type { Task, TaskStatus, TaskPriority } from '@/types'
 import TaskModal from '@/components/organisms/TaskModal.vue'
 import DayTasksList from '@/components/organisms/DayTasksList.vue'
+import TasksFilters from '@/components/organisms/TasksFilters.vue'
 import { toLocalIso, formatMonthLabel } from '@/utils/date'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
 const tasksStore = useTasksStore()
 const categoriesStore = useCategoriesStore()
+const groupsStore = useGroupsStore()
+
 const { visibleCategories } = storeToRefs(categoriesStore)
+const { groups } = storeToRefs(groupsStore)
 
 onMounted(async () => {
-  await Promise.all([categoriesStore.fetchCategories(), tasksStore.load()])
+  await Promise.all([categoriesStore.fetchCategories(), groupsStore.fetchMyGroups(), tasksStore.load()])
 })
 
 const categoryMap = computed<Record<string, string>>(() => {
@@ -25,12 +30,17 @@ const categoryMap = computed<Record<string, string>>(() => {
   return map
 })
 
+const groupMap = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const g of groups.value ?? []) {
+    map[g.groupId] = g.name
+  }
+  return map
+})
+
 const getBadgeLabel = (task: Task) => {
   const groupId = (task as any).groupId ?? (task as any).group_id ?? null
-  if (groupId) {
-    const groupName = (task as any).groupName ?? (task as any).group_name ?? null
-    return groupName || 'Group'
-  }
+  if (groupId) return groupMap.value[groupId] ?? 'Group'
 
   const id = task.categoryId ?? null
   if (!id) return '—'
@@ -45,7 +55,7 @@ const selectedDate = ref<string>(todayIso)
 
 const monthLabel = computed(() => formatMonthLabel(currentMonth.value))
 
-const weekDaysShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const weekDaysShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
 
 type DayCell = {
   iso: string
@@ -67,9 +77,7 @@ const monthDays = computed<DayCell[]>(() => {
   const daysBefore = weekDay - 1
 
   const nextMonthFirst = new Date(year, month + 1, 1)
-  const daysInMonth = Math.round(
-    (nextMonthFirst.getTime() - firstOfMonth.getTime()) / (1000 * 60 * 60 * 24),
-  )
+  const daysInMonth = Math.round((nextMonthFirst.getTime() - firstOfMonth.getTime()) / (1000 * 60 * 60 * 24))
 
   const totalCellsRaw = daysBefore + daysInMonth
   const rows = Math.max(4, Math.ceil(totalCellsRaw / 7))
@@ -120,7 +128,7 @@ const priorityOrder: Record<UIPriority, number> = {
 
 const getPriority = (p?: UIPriority) => p ?? 'low'
 
-const selectedTasks = computed(() =>
+const baseSelectedTasks = computed(() =>
   tasksStore
     .tasksByDate(selectedDate.value)
     .slice()
@@ -134,6 +142,21 @@ const selectedTasks = computed(() =>
       return aTime.localeCompare(bTime)
     }),
 )
+
+const filteredSelectedTasks = ref<Task[]>([])
+
+watch(
+  () => baseSelectedTasks.value,
+  v => {
+    filteredSelectedTasks.value = v
+  },
+  { immediate: true },
+)
+
+const onFilteredUpdate = (flat: Task[]) => {
+  const set = new Set(flat.map(t => t.id))
+  filteredSelectedTasks.value = baseSelectedTasks.value.filter(t => set.has(t.id))
+}
 
 const changeMonth = (delta: number) => {
   const d = new Date(currentMonth.value)
@@ -203,6 +226,11 @@ const handleToggleStatus = (id: string) => {
       <BaseButton size="sm" variant="outline" @click="goToToday">Today</BaseButton>
     </div>
 
+    <TasksFilters
+      :tasks="baseSelectedTasks"
+      @update:filteredTasks="onFilteredUpdate($event)"
+    />
+
     <div class="rounded-lg border border-border-soft bg-app-surface shadow-sm p-3 md:p-4">
       <div class="flex items-center justify-between mb-3 text-sm">
         <BaseButton variant="outline" size="sm" @click="changeMonth(-1)">‹ Previous</BaseButton>
@@ -253,10 +281,7 @@ const handleToggleStatus = (id: string) => {
 
             <div class="mb-1 flex items-center justify-center gap-0.5 h-3">
               <span v-if="day.hasOverdue" class="calendar-indicator calendar-indicator--square" />
-              <span
-                v-if="day.hasInProgress"
-                class="calendar-indicator calendar-indicator--triangle"
-              />
+              <span v-if="day.hasInProgress" class="calendar-indicator calendar-indicator--triangle" />
               <span v-if="day.showTodo" class="calendar-indicator calendar-indicator--circle" />
             </div>
           </button>
@@ -267,7 +292,7 @@ const handleToggleStatus = (id: string) => {
     <div class="mt-6">
       <DayTasksList
         :date-label="selectedDate"
-        :tasks="selectedTasks"
+        :tasks="filteredSelectedTasks"
         :category-map="categoryMap"
         :get-badge-label="getBadgeLabel"
         @add="openCreate"

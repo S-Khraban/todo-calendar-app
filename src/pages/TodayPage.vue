@@ -4,17 +4,22 @@ import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import { useTasksStore } from '@/stores/tasks'
 import { useCategoriesStore } from '@/stores/categories'
+import { useGroupsStore } from '@/stores/groups'
 import type { Task, TaskStatus, TaskPriority } from '@/types'
 import TaskModal from '@/components/organisms/TaskModal.vue'
+import TasksFilters from '@/components/organisms/TasksFilters.vue'
 import { toLocalIso, formatFullDateUA } from '@/utils/date'
 
 const tasksStore = useTasksStore()
 const categoriesStore = useCategoriesStore()
+const groupsStore = useGroupsStore()
+
 const { visibleCategories } = storeToRefs(categoriesStore)
+const { groups } = storeToRefs(groupsStore)
 const route = useRoute()
 
 onMounted(async () => {
-  await Promise.all([categoriesStore.fetchCategories(), tasksStore.load()])
+  await Promise.all([categoriesStore.fetchCategories(), groupsStore.fetchMyGroups(), tasksStore.load()])
 })
 
 const categoryMap = computed<Record<string, string>>(() => {
@@ -25,12 +30,17 @@ const categoryMap = computed<Record<string, string>>(() => {
   return map
 })
 
+const groupMap = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const g of groups.value ?? []) {
+    map[g.groupId] = g.name
+  }
+  return map
+})
+
 const getBadgeLabel = (task: Task) => {
   const groupId = (task as any).groupId ?? (task as any).group_id ?? null
-  if (groupId) {
-    const groupName = (task as any).groupName ?? (task as any).group_name ?? null
-    return groupName || 'Group'
-  }
+  if (groupId) return groupMap.value[groupId] ?? 'Group'
 
   const id = task.categoryId ?? null
   if (!id) return '—'
@@ -48,7 +58,7 @@ const currentDate = computed(() => {
   return param || todayIso
 })
 
-const tasksForDate = computed(() =>
+const baseTasksForDate = computed(() =>
   tasksStore
     .tasksByDate(currentDate.value)
     .slice()
@@ -60,8 +70,9 @@ const tasksForDate = computed(() =>
     }),
 )
 
+const filteredTasks = ref<Task[]>([])
 const currentDateLabel = computed(() => formatFullDateUA(currentDate.value))
-const hasTasks = computed(() => tasksForDate.value.length > 0)
+const hasTasks = computed(() => filteredTasks.value.length > 0)
 
 const isTaskModalOpen = ref(false)
 const editingTask = ref<Task | null>(null)
@@ -111,13 +122,16 @@ const toggleStatus = (task: Task) => {
 <template>
   <div class="page-container">
     <header class="mb-4 space-y-1">
-      <h1 class="text-xl font-semibold text-text-primary">
-        Tasks for {{ currentDateLabel }}
-      </h1>
+      <h1 class="text-xl font-semibold text-text-primary">Tasks for {{ currentDateLabel }}</h1>
       <p class="text-sm text-text-muted">
         {{ hasTasks ? 'Here are your tasks for this day.' : 'No tasks yet, add one below.' }}
       </p>
     </header>
+
+    <TasksFilters
+      :tasks="baseTasksForDate"
+      @update:filteredTasks="filteredTasks = $event"
+    />
 
     <section class="mb-6 flex flex-wrap items-center gap-3">
       <button
@@ -130,22 +144,18 @@ const toggleStatus = (task: Task) => {
     </section>
 
     <section>
-      <div v-if="tasksForDate.length === 0" class="text-sm text-text-muted">
-        No tasks for this day.
-      </div>
+      <div v-if="filteredTasks.length === 0" class="text-sm text-text-muted">No tasks for this day.</div>
 
       <ul v-else class="flex flex-col gap-2 text-sm">
         <li
-          v-for="task in tasksForDate"
+          v-for="task in filteredTasks"
           :key="task.id"
           class="flex items-center gap-3 px-3 py-2 rounded-md border border-border-soft bg-app-surface shadow-sm"
           :class="[
             getPriority(task.priority as UIPrio | undefined) === 'high'
               ? 'ring-1 ring-amber-400/60 border-amber-300/60'
               : '',
-            getPriority(task.priority as UIPrio | undefined) === 'medium'
-              ? 'border-border-soft/80'
-              : '',
+            getPriority(task.priority as UIPrio | undefined) === 'medium' ? 'border-border-soft/80' : '',
           ]"
         >
           <input
@@ -162,9 +172,7 @@ const toggleStatus = (task: Task) => {
                 getPriority(task.priority as UIPrio | undefined) === 'medium'
                   ? 'font-semibold'
                   : 'font-medium',
-                task.status === 'done'
-                  ? 'line-through text-text-muted'
-                  : 'text-text-primary',
+                task.status === 'done' ? 'line-through text-text-muted' : 'text-text-primary',
               ]"
             >
               <span
@@ -189,9 +197,7 @@ const toggleStatus = (task: Task) => {
             {{ getBadgeLabel(task) }}
           </span>
 
-          <button type="button" class="text-xs text-brand-primary" @click="openEdit(task)">
-            Edit
-          </button>
+          <button type="button" class="text-xs text-brand-primary" @click="openEdit(task)">Edit</button>
         </li>
       </ul>
     </section>

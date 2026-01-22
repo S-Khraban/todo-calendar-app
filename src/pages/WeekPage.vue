@@ -4,15 +4,21 @@ import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useTasksStore } from '@/stores/tasks'
 import { useCategoriesStore } from '@/stores/categories'
+import { useGroupsStore } from '@/stores/groups'
 import type { Task, TaskStatus, TaskPriority } from '@/types'
 
 import DateBadge from '@/components/atoms/DateBadge.vue'
 import WeekMultiDayRow from '@/components/organisms/WeekMultiDayRow.vue'
 import TaskModal from '@/components/organisms/TaskModal.vue'
+import TasksFilters from '@/components/organisms/TasksFilters.vue'
 
 const tasksStore = useTasksStore()
 const categoriesStore = useCategoriesStore()
+const groupsStore = useGroupsStore()
+
 const { visibleCategories } = storeToRefs(categoriesStore)
+const { groups } = storeToRefs(groupsStore)
+
 const router = useRouter()
 
 const toLocalIso = (d: Date) => {
@@ -23,7 +29,7 @@ const toLocalIso = (d: Date) => {
 }
 
 onMounted(async () => {
-  await Promise.all([categoriesStore.fetchCategories(), tasksStore.load()])
+  await Promise.all([categoriesStore.fetchCategories(), groupsStore.fetchMyGroups(), tasksStore.load()])
 })
 
 const categoryMap = computed<Record<string, string>>(() => {
@@ -34,12 +40,17 @@ const categoryMap = computed<Record<string, string>>(() => {
   return map
 })
 
+const groupMap = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const g of groups.value ?? []) {
+    map[g.groupId] = g.name
+  }
+  return map
+})
+
 const getBadgeLabel = (task: Task) => {
   const groupId = (task as any).groupId ?? (task as any).group_id ?? null
-  if (groupId) {
-    const groupName = (task as any).groupName ?? (task as any).group_name ?? null
-    return groupName || 'Group'
-  }
+  if (groupId) return groupMap.value[groupId] ?? 'Group'
 
   const id = task.categoryId ?? null
   if (!id) return '—'
@@ -83,7 +94,7 @@ const priorityOrder: Record<UIPriority, number> = {
 
 const getPriority = (p?: UIPriority) => p ?? 'low'
 
-const tasksByDay = computed(() =>
+const baseTasksByDay = computed(() =>
   weekDays.map(dayInfo => {
     const tasks = tasksStore
       .tasksByDate(dayInfo.iso)
@@ -102,6 +113,15 @@ const tasksByDay = computed(() =>
     return { day: dayInfo, tasks }
   }),
 )
+
+const filteredByDay = ref<{ day: WeekDay; tasks: Task[] }[]>([])
+const onFilteredUpdate = (flat: Task[]) => {
+  const set = new Set(flat.map(t => t.id))
+  filteredByDay.value = baseTasksByDay.value.map(col => ({
+    day: col.day,
+    tasks: col.tasks.filter(t => set.has(t.id)),
+  }))
+}
 
 const isTaskModalOpen = ref(false)
 const editingTask = ref<Task | null>(null)
@@ -146,6 +166,11 @@ const handleSaveTask = async (payload: SavePayload) => {
   <div class="page-container">
     <h1>Weekly overview</h1>
 
+    <TasksFilters
+      :tasks="baseTasksByDay.flatMap(x => x.tasks)"
+      @update:filteredTasks="onFilteredUpdate($event)"
+    />
+
     <div class="pd4u-week-row">
       <div
         v-for="day in weekDays"
@@ -178,7 +203,7 @@ const handleSaveTask = async (payload: SavePayload) => {
 
     <div class="pd4u-week-cells">
       <div
-        v-for="col in tasksByDay"
+        v-for="col in (filteredByDay.length ? filteredByDay : baseTasksByDay)"
         :key="col.day.iso"
         class="pd4u-week-cell"
         :class="{ 'pd4u-week-cell--today': col.day.iso === todayIso }"

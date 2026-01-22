@@ -1,17 +1,19 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useTasksStore } from '@/stores/tasks'
 import { useCategoriesStore } from '@/stores/categories'
 import { useGroupsStore } from '@/stores/groups'
-import type { TaskStatus, Task, TaskPriority } from '@/types'
+import type { Task, TaskPriority, TaskStatus } from '@/types'
 import Button from '@/components/atoms/Button.vue'
 import TaskModal from '@/components/organisms/TaskModal.vue'
+import TasksFilters from '@/components/organisms/TasksFilters.vue'
 import { toLocalIso, formatIsoShort } from '@/utils/date'
 
 const tasksStore = useTasksStore()
 const categoriesStore = useCategoriesStore()
 const groupsStore = useGroupsStore()
+
 const { visibleCategories } = storeToRefs(categoriesStore)
 const { groups } = storeToRefs(groupsStore)
 
@@ -36,20 +38,13 @@ const groupMap = computed<Record<string, string>>(() => {
 })
 
 const getBadgeLabel = (task: Task) => {
-  const groupId = (task as any).groupId ?? (task as any).group_id ?? null
+  const groupId = ((task as any).groupId ?? (task as any).group_id ?? null) as string | null
   if (groupId) return groupMap.value[groupId] ?? 'Group'
 
   const categoryId = task.categoryId ?? null
   if (!categoryId) return '—'
   return categoryMap.value[categoryId] ?? '—'
 }
-
-const statusFilter = ref<TaskStatus | 'all'>('all')
-const todayIso = toLocalIso(new Date())
-
-const isTaskModalOpen = ref(false)
-const editingTask = ref<Task | null>(null)
-const modalDate = ref<string>(todayIso)
 
 type UIPriority = 'low' | 'medium' | 'high'
 
@@ -61,12 +56,14 @@ const priorityOrder: Record<UIPriority, number> = {
 
 const getPriority = (p?: UIPriority) => p ?? 'low'
 
-const filteredTasks = computed(() => {
-  return tasksStore.tasks
-    .filter(task => {
-      if (statusFilter.value !== 'all' && task.status !== statusFilter.value) return false
-      return true
-    })
+const todayIso = toLocalIso(new Date())
+
+const isTaskModalOpen = ref(false)
+const editingTask = ref<Task | null>(null)
+const modalDate = ref<string>(todayIso)
+
+const baseTasks = computed(() =>
+  tasksStore.tasks
     .slice()
     .sort((a, b) => {
       if (a.date !== b.date) return a.date.localeCompare(b.date)
@@ -78,8 +75,23 @@ const filteredTasks = computed(() => {
       const aTime = a.startTime || '00:00'
       const bTime = b.startTime || '00:00'
       return aTime.localeCompare(bTime)
-    })
-})
+    }),
+)
+
+const filteredTasks = ref<Task[]>([])
+
+watch(
+  () => baseTasks.value,
+  v => {
+    filteredTasks.value = v
+  },
+  { immediate: true },
+)
+
+const onFilteredUpdate = (flat: Task[]) => {
+  const set = new Set(flat.map(t => t.id))
+  filteredTasks.value = baseTasks.value.filter(t => set.has(t.id))
+}
 
 const openCreate = () => {
   modalDate.value = todayIso
@@ -128,19 +140,11 @@ const handleSaveTask = async (payload: SavePayload) => {
       </Button>
     </div>
 
-    <div class="flex flex-wrap gap-3 mb-5 text-sm">
-      <label class="flex items-center gap-1">
-        <span>Status:</span>
-        <select
-          v-model="statusFilter"
-          class="ml-1 px-2 py-1 rounded-md border border-border-soft bg-white text-text-primary text-sm focus:(outline-none border-brand-primary ring-1 ring-brand-primary/50)"
-        >
-          <option value="all">All</option>
-          <option value="todo">Planned</option>
-          <option value="in_progress">In progress</option>
-          <option value="done">Done</option>
-        </select>
-      </label>
+    <div class="mb-5">
+      <TasksFilters
+        :tasks="baseTasks"
+        @update:filteredTasks="onFilteredUpdate($event)"
+      />
     </div>
 
     <div v-if="filteredTasks.length === 0" class="text-text-muted text-sm">
@@ -156,9 +160,7 @@ const handleSaveTask = async (payload: SavePayload) => {
           getPriority(task.priority as UIPriority | undefined) === 'high'
             ? 'ring-1 ring-amber-400/60 border-amber-300/60'
             : '',
-          getPriority(task.priority as UIPriority | undefined) === 'medium'
-            ? 'border-border-soft/80'
-            : '',
+          getPriority(task.priority as UIPriority | undefined) === 'medium' ? 'border-border-soft/80' : '',
         ]"
         @click="startEdit(task)"
       >
@@ -166,9 +168,7 @@ const handleSaveTask = async (payload: SavePayload) => {
           <div
             :class="[
               'truncate',
-              getPriority(task.priority as UIPriority | undefined) === 'medium'
-                ? 'font-semibold'
-                : 'font-medium',
+              getPriority(task.priority as UIPriority | undefined) === 'medium' ? 'font-semibold' : 'font-medium',
               task.status === 'done' ? 'line-through text-text-muted' : 'text-text-primary',
             ]"
           >
@@ -183,9 +183,7 @@ const handleSaveTask = async (payload: SavePayload) => {
 
           <div class="text-xs text-text-muted mt-0.5">
             {{ formatIsoShort(task.date) }}
-            <span v-if="task.endDate && task.endDate !== task.date">
-              → {{ formatIsoShort(task.endDate) }}
-            </span>
+            <span v-if="task.endDate && task.endDate !== task.date"> → {{ formatIsoShort(task.endDate) }}</span>
             <span v-if="task.startTime || task.endTime">
               • {{ task.startTime || '??:??' }} – {{ task.endTime || '...' }}
             </span>
