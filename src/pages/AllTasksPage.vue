@@ -179,47 +179,49 @@ const handleSaveTask = async (payload: SavePayload) => {
       <li
         v-for="task in filteredTasks"
         :key="task.id"
-        class="grid grid-cols-[1fr,auto] gap-2 items-start px-3 py-2 rounded-md border shadow-sm cursor-pointer"
+        class="grid grid-cols-[1fr,auto] gap-2 items-center px-2 py-1.5 rounded-md border cursor-pointer"
         :style="taskRowStyle(task)"
         :class="[
-          getPriority(task.priority as UIPriority | undefined) === 'high' ? 'ring-1 ring-amber-400/60' : '',
+          getPriority(task.priority as UIPriority | undefined) === 'high' ? 'ring-1 ring-amber-400/50' : '',
           getPriority(task.priority as UIPriority | undefined) === 'medium' ? 'border-border-soft/80' : '',
         ]"
         @click="startEdit(task)"
       >
         <div class="min-w-0">
-          <div
-            :class="[
-              'truncate',
-              getPriority(task.priority as UIPriority | undefined) === 'medium' ? 'font-semibold' : 'font-medium',
-              task.status === 'done' ? 'line-through text-text-muted' : 'text-text-primary',
-            ]"
-          >
-            <span
-              v-if="getPriority(task.priority as UIPriority | undefined) === 'high'"
-              class="mr-1 text-amber-500"
-              aria-hidden="true"
-              >★</span
+          <div class="flex items-center gap-2 min-w-0">
+            <div
+              :class="[
+                'truncate leading-5',
+                getPriority(task.priority as UIPriority | undefined) === 'medium' ? 'font-semibold' : 'font-medium',
+                task.status === 'done' ? 'line-through text-text-muted' : 'text-text-primary',
+              ]"
             >
-            {{ task.title }}
-          </div>
+              <span
+                v-if="getPriority(task.priority as UIPriority | undefined) === 'high'"
+                class="mr-1 text-amber-500"
+                aria-hidden="true"
+                >★</span
+              >
+              {{ task.title }}
+            </div>
 
-          <div class="text-xs text-text-muted mt-0.5">
-            {{ formatIsoShort(task.date) }}
-            <span v-if="task.endDate && task.endDate !== task.date"> → {{ formatIsoShort(task.endDate) }}</span>
-            <span v-if="task.startTime || task.endTime">
-              • {{ task.startTime || '??:??' }} – {{ task.endTime || '...' }}
+            <span class="shrink-0 text-[11px] text-text-muted">
+              {{ formatIsoShort(task.date) }}
+              <span v-if="task.endDate && task.endDate !== task.date">→ {{ formatIsoShort(task.endDate) }}</span>
             </span>
-          </div>
 
-          <div class="mt-0.5 text-[11px] text-text-muted">
-            Status:
-            <span class="capitalize">{{ task.status.replace('_', ' ') }}</span>
+            <span v-if="task.startTime || task.endTime" class="shrink-0 text-[11px] text-text-muted">
+              • {{ task.startTime || '??:??' }}–{{ task.endTime || '...' }}
+            </span>
+
+            <span class="shrink-0 text-[11px] text-text-muted">
+              • <span class="capitalize">{{ task.status.replace('_', ' ') }}</span>
+            </span>
           </div>
         </div>
 
-        <div class="flex flex-col items-end gap-1">
-          <span class="text-[11px] px-2 py-0.5 rounded-full bg-brand-primarySoft text-brand-primary">
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-primarySoft text-brand-primary leading-4">
             {{ getBadgeLabel(task) }}
           </span>
 
@@ -227,7 +229,7 @@ const handleSaveTask = async (payload: SavePayload) => {
             type="button"
             size="sm"
             variant="ghost"
-            class="border-none bg-transparent text-[11px] text-rose-500 hover:text-rose-400 cursor-pointer px-0"
+            class="border-none bg-transparent text-[11px] text-rose-500 hover:text-rose-400 cursor-pointer px-0 py-0 h-auto leading-4"
             @click.stop="tasksStore.removeTask(task.id)"
           >
             Delete

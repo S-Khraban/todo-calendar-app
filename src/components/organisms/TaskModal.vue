@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import type { Task, TaskStatus } from '@/types'
 import { useCategoriesStore } from '@/stores/categories'
@@ -71,6 +71,8 @@ const form = reactive({
 })
 
 const isEdit = computed(() => !!props.task)
+
+const isLocked = ref(false)
 
 const selectedGroup = computed(() => myGroups.value.find(g => g.id === form.groupId) ?? null)
 
@@ -163,6 +165,7 @@ watch(
   () => props.task,
   async task => {
     if (!task) {
+      isLocked.value = false
       form.scope = 'personal'
       form.groupId = ''
       form.assignedUserId = ''
@@ -178,6 +181,8 @@ watch(
       ensureDefaultCategory()
       return
     }
+
+    isLocked.value = true
 
     const groupId = (task as any).groupId ?? (task as any).group_id ?? null
     const assignedUserId = (task as any).assignedUserId ?? (task as any).assigned_user_id ?? null
@@ -217,7 +222,13 @@ watch(
 const close = () => emit('update:modelValue', false)
 const setOpen = (v: boolean) => emit('update:modelValue', v)
 
+const toggleEdit = () => {
+  if (!isEdit.value) return
+  isLocked.value = !isLocked.value
+}
+
 const onSubmit = () => {
+  if (isLocked.value) return
   if (!form.title.trim()) return
 
   const isGroup = form.scope === 'group'
@@ -245,7 +256,7 @@ const onSubmit = () => {
 <template>
   <BaseModal
     :model-value="modelValue"
-    :title="isEdit ? 'Edit task' : 'New task'"
+    :title="isEdit ? (isLocked ? 'Task' : 'Edit task') : 'New task'"
     max-width="md"
     @update:model-value="setOpen"
     @close="close"
@@ -254,7 +265,7 @@ const onSubmit = () => {
       <form class="tm-form" @submit.prevent="onSubmit">
         <div class="tm-field">
           <div class="tm-label">Task type</div>
-          <select v-model="form.scope" class="tm-native" :disabled="isEdit">
+          <select v-model="form.scope" class="tm-native" :disabled="isLocked || isEdit">
             <option value="personal">Personal</option>
             <option value="group" :disabled="!myGroups.length">Group</option>
           </select>
@@ -263,7 +274,7 @@ const onSubmit = () => {
         <div v-if="form.scope === 'group'" class="tm-row tm-row--2">
           <div class="tm-field">
             <div class="tm-label">Group</div>
-            <select v-model="form.groupId" class="tm-native" :disabled="isEdit || !myGroups.length">
+            <select v-model="form.groupId" class="tm-native" :disabled="isLocked || isEdit || !myGroups.length">
               <option v-for="g in myGroups" :key="g.id" :value="g.id">
                 {{ g.name }}
               </option>
@@ -272,7 +283,7 @@ const onSubmit = () => {
 
           <div class="tm-field">
             <div class="tm-label">Assignee</div>
-            <select v-model="form.assignedUserId" class="tm-native" :disabled="!canAssign">
+            <select v-model="form.assignedUserId" class="tm-native" :disabled="isLocked || !canAssign">
               <option value="">Unassigned</option>
               <option v-for="m in groupMembers" :key="m.userId" :value="m.userId">
                 {{ m.name ?? m.email ?? m.userId }}
@@ -281,27 +292,39 @@ const onSubmit = () => {
           </div>
         </div>
 
-        <BaseInput v-model="form.title" label="Title" placeholder="What needs to be done?" required />
+        <BaseInput
+          v-model="form.title"
+          label="Title"
+          placeholder="What needs to be done?"
+          required
+          :disabled="isLocked"
+        />
 
         <div class="tm-field">
           <div class="tm-label">Description (optional)</div>
-          <textarea v-model="form.description" class="tm-textarea" rows="3" placeholder="Task details" />
+          <textarea
+            v-model="form.description"
+            class="tm-textarea"
+            rows="3"
+            placeholder="Task details"
+            :disabled="isLocked"
+          />
         </div>
 
         <div class="tm-row tm-row--3">
           <div class="tm-field">
             <div class="tm-label">Start date</div>
-            <input v-model="form.date" type="date" class="tm-native" />
+            <input v-model="form.date" type="date" class="tm-native" :disabled="isLocked" />
           </div>
 
           <div class="tm-field">
             <div class="tm-label">End date</div>
-            <input v-model="form.endDate" type="date" class="tm-native" />
+            <input v-model="form.endDate" type="date" class="tm-native" :disabled="isLocked" />
           </div>
 
           <div class="tm-field">
             <div class="tm-label">Priority</div>
-            <select v-model="form.priority" class="tm-native">
+            <select v-model="form.priority" class="tm-native" :disabled="isLocked">
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High ★</option>
@@ -312,17 +335,17 @@ const onSubmit = () => {
         <div class="tm-row tm-row--3">
           <div class="tm-field">
             <div class="tm-label">Start time</div>
-            <input v-model="form.startTime" type="time" class="tm-native" />
+            <input v-model="form.startTime" type="time" class="tm-native" :disabled="isLocked" />
           </div>
 
           <div class="tm-field">
             <div class="tm-label">End time</div>
-            <input v-model="form.endTime" type="time" class="tm-native" />
+            <input v-model="form.endTime" type="time" class="tm-native" :disabled="isLocked" />
           </div>
 
           <div class="tm-field">
             <div class="tm-label">Status</div>
-            <select v-model="form.status" class="tm-native">
+            <select v-model="form.status" class="tm-native" :disabled="isLocked">
               <option value="todo">To do</option>
               <option value="in_progress">In progress</option>
               <option value="done">Done</option>
@@ -333,7 +356,7 @@ const onSubmit = () => {
         <div v-if="form.scope !== 'group'" class="tm-row tm-row--1">
           <div class="tm-field">
             <div class="tm-label">Category</div>
-            <select v-model="form.categoryId" class="tm-native" :disabled="!categories.length">
+            <select v-model="form.categoryId" class="tm-native" :disabled="isLocked || !categories.length">
               <option value="" disabled>Select a category</option>
               <option v-for="c in categories" :key="c.id" :value="c.id">
                 {{ c.name }}
@@ -343,8 +366,13 @@ const onSubmit = () => {
         </div>
 
         <div class="tm-footer">
+          <BaseButton v-if="isEdit" variant="ghost" type="button" class="tm-edit-btn" @click="toggleEdit">
+            🖋️ <span>Edit</span>
+          </BaseButton>
+
           <BaseButton variant="ghost" type="button" @click="close">Cancel</BaseButton>
-          <BaseButton variant="solid" type="submit">
+
+          <BaseButton v-if="!isLocked" variant="solid" type="submit">
             {{ isEdit ? 'Save' : 'Create' }}
           </BaseButton>
         </div>
@@ -439,6 +467,21 @@ const onSubmit = () => {
   display: flex;
   justify-content: flex-end;
   gap: 6px;
+  align-items: center;
+}
+
+.tm-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted, #6b7280);
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.tm-edit-btn:hover {
+  color: var(--brand-primary, #2563eb);
 }
 
 @media (max-width: 900px) {
