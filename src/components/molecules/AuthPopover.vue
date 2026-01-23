@@ -32,7 +32,6 @@ const signInWithGoogle = async () => {
   if (isLoading.value) return
   isLoading.value = true
 
-
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
