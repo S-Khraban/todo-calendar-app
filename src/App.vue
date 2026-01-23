@@ -3,7 +3,7 @@
     <Navbar />
 
     <main class="pd4u-container py-6">
-      <RouterView v-if="session" />
+      <RouterView v-if="isAuthReady && session" />
       <div v-else class="auth-gate" aria-label="Please sign in">
         Please sign in to continue
       </div>
@@ -19,14 +19,14 @@ import { supabase } from '@/services/supabaseClient'
 import { useTasksStore } from '@/stores/tasks'
 
 const session = ref<Session | null>(null)
+const isAuthReady = ref(false)
 
 const tasksStore = useTasksStore()
-
 let unsubscribe: (() => void) | null = null
 
 const refreshStores = async () => {
   if (!session.value) {
-    tasksStore.reset?.()
+    tasksStore.$reset?.()
     return
   }
 
@@ -41,18 +41,22 @@ const refreshStores = async () => {
 }
 
 onMounted(async () => {
-  session.value = (await supabase.auth.getSession()).data.session
+  const { data } = await supabase.auth.getSession()
+  session.value = data.session
+  isAuthReady.value = true
 
-  const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
+  const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
     session.value = newSession
   })
 
-  unsubscribe = data.subscription.unsubscribe
+  unsubscribe = sub.subscription.unsubscribe
 })
 
 watch(session, async () => {
+  if (!isAuthReady.value) return
   await refreshStores()
 }, { immediate: true })
+
 onBeforeUnmount(() => {
   unsubscribe?.()
 })
@@ -83,6 +87,7 @@ onBeforeUnmount(() => {
   min-height: 60vh;
   display: grid;
   place-items: center;
+  background: #fff;
   color: var(--text-secondary, #6b7280);
   font-size: 14px;
 }
