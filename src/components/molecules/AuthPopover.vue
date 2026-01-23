@@ -32,10 +32,12 @@ const signInWithGoogle = async () => {
   if (isLoading.value) return
   isLoading.value = true
 
+  const next = encodeURIComponent('/week')
+
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
+      redirectTo: `${window.location.origin}/auth/callback?next=${next}`,
     },
   })
 
