@@ -140,6 +140,8 @@ const baseTasksByDay = computed(() =>
   }),
 )
 
+const flatTasks = computed(() => baseTasksByDay.value.flatMap(x => x.tasks))
+
 const filteredByDay = ref<{ day: WeekDay; tasks: Task[] }[]>([])
 const onFilteredUpdate = (flat: Task[]) => {
   const set = new Set(flat.map(t => t.id))
@@ -148,6 +150,10 @@ const onFilteredUpdate = (flat: Task[]) => {
     tasks: col.tasks.filter(t => set.has(t.id)),
   }))
 }
+
+const colsToRender = computed(() =>
+  filteredByDay.value.length ? filteredByDay.value : baseTasksByDay.value,
+)
 
 const isTaskModalOpen = ref(false)
 const editingTask = ref<Task | null>(null)
@@ -201,7 +207,7 @@ const handleSaveTask = async (payload: SavePayload) => {
     </div>
 
     <TasksFilters
-      :tasks="baseTasksByDay.flatMap(x => x.tasks)"
+      :tasks="flatTasks"
       @update:filteredTasks="onFilteredUpdate($event)"
     />
 
@@ -237,7 +243,7 @@ const handleSaveTask = async (payload: SavePayload) => {
 
     <div class="pd4u-week-cells">
       <div
-        v-for="col in (filteredByDay.length ? filteredByDay : baseTasksByDay)"
+        v-for="col in colsToRender"
         :key="col.day.iso"
         class="pd4u-week-cell"
         :class="{ 'pd4u-week-cell--today': col.day.iso === todayIso }"

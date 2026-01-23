@@ -11,7 +11,14 @@ onMounted(async () => {
   const nextRaw = url.searchParams.get('next')
   const next = nextRaw ? decodeURIComponent(nextRaw) : '/week'
 
-  const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href)
+  const code = url.searchParams.get('code')
+
+  if (!code) {
+    await router.replace('/user')
+    return
+  }
+
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error || !data.session) {
     await router.replace('/user')

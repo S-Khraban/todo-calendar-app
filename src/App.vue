@@ -3,7 +3,7 @@
     <Navbar />
 
     <main class="pd4u-container py-6">
-      <RouterView v-if="isAuthReady && session" />
+      <RouterView v-if="session" />
       <div v-else class="auth-gate" aria-label="Please sign in">
         Please sign in to continue
       </div>
@@ -19,9 +19,9 @@ import { supabase } from '@/services/supabaseClient'
 import { useTasksStore } from '@/stores/tasks'
 
 const session = ref<Session | null>(null)
-const isAuthReady = ref(false)
 
 const tasksStore = useTasksStore()
+
 let unsubscribe: (() => void) | null = null
 
 const refreshStores = async () => {
@@ -41,22 +41,18 @@ const refreshStores = async () => {
 }
 
 onMounted(async () => {
-  const { data } = await supabase.auth.getSession()
-  session.value = data.session
-  isAuthReady.value = true
+  session.value = (await supabase.auth.getSession()).data.session
 
-  const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+  const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
     session.value = newSession
   })
 
-  unsubscribe = sub.subscription.unsubscribe
+  unsubscribe = data.subscription.unsubscribe
 })
 
 watch(session, async () => {
-  if (!isAuthReady.value) return
   await refreshStores()
 }, { immediate: true })
-
 onBeforeUnmount(() => {
   unsubscribe?.()
 })
@@ -87,7 +83,6 @@ onBeforeUnmount(() => {
   min-height: 60vh;
   display: grid;
   place-items: center;
-  background: #fff;
   color: var(--text-secondary, #6b7280);
   font-size: 14px;
 }
