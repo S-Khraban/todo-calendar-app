@@ -245,7 +245,7 @@ const onSubmit = () => {
 <template>
   <BaseModal
     :model-value="modelValue"
-    :title="isEdit ? 'Редагувати задачу' : 'Нова задача'"
+    :title="isEdit ? 'Edit task' : 'New task'"
     max-width="md"
     @update:model-value="setOpen"
     @close="close"
@@ -253,16 +253,16 @@ const onSubmit = () => {
     <div class="tm-scroll">
       <form class="tm-form" @submit.prevent="onSubmit">
         <div class="tm-field">
-          <div class="tm-label">Тип задачі</div>
+          <div class="tm-label">Task type</div>
           <select v-model="form.scope" class="tm-native" :disabled="isEdit">
-            <option value="personal">Моя</option>
-            <option value="group" :disabled="!myGroups.length">Групова</option>
+            <option value="personal">Personal</option>
+            <option value="group" :disabled="!myGroups.length">Group</option>
           </select>
         </div>
 
-        <div v-if="form.scope === 'group'" class="tm-row">
+        <div v-if="form.scope === 'group'" class="tm-row tm-row--2">
           <div class="tm-field">
-            <div class="tm-label">Група</div>
+            <div class="tm-label">Group</div>
             <select v-model="form.groupId" class="tm-native" :disabled="isEdit || !myGroups.length">
               <option v-for="g in myGroups" :key="g.id" :value="g.id">
                 {{ g.name }}
@@ -271,9 +271,9 @@ const onSubmit = () => {
           </div>
 
           <div class="tm-field">
-            <div class="tm-label">Відповідальний</div>
+            <div class="tm-label">Assignee</div>
             <select v-model="form.assignedUserId" class="tm-native" :disabled="!canAssign">
-              <option value="">Не призначено</option>
+              <option value="">Unassigned</option>
               <option v-for="m in groupMembers" :key="m.userId" :value="m.userId">
                 {{ m.name ?? m.email ?? m.userId }}
               </option>
@@ -281,82 +281,71 @@ const onSubmit = () => {
           </div>
         </div>
 
-        <BaseInput v-model="form.title" label="Назва" placeholder="Що потрібно зробити?" required />
+        <BaseInput v-model="form.title" label="Title" placeholder="What needs to be done?" required />
 
         <div class="tm-field">
-          <div class="tm-label">Опис (необовʼязково)</div>
-          <textarea v-model="form.description" class="tm-textarea" rows="3" placeholder="Деталі задачі" />
+          <div class="tm-label">Description (optional)</div>
+          <textarea v-model="form.description" class="tm-textarea" rows="3" placeholder="Task details" />
         </div>
 
-        <div class="tm-row">
+        <div class="tm-row tm-row--3">
           <div class="tm-field">
-            <div class="tm-label">Початкова дата</div>
+            <div class="tm-label">Start date</div>
             <input v-model="form.date" type="date" class="tm-native" />
           </div>
 
           <div class="tm-field">
-            <div class="tm-label">Кінцева дата</div>
+            <div class="tm-label">End date</div>
             <input v-model="form.endDate" type="date" class="tm-native" />
+          </div>
+
+          <div class="tm-field">
+            <div class="tm-label">Priority</div>
+            <select v-model="form.priority" class="tm-native">
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High ★</option>
+            </select>
           </div>
         </div>
 
-        <div class="tm-row">
+        <div class="tm-row tm-row--3">
           <div class="tm-field">
-            <div class="tm-label">Початок</div>
+            <div class="tm-label">Start time</div>
             <input v-model="form.startTime" type="time" class="tm-native" />
           </div>
 
           <div class="tm-field">
-            <div class="tm-label">Кінець</div>
+            <div class="tm-label">End time</div>
             <input v-model="form.endTime" type="time" class="tm-native" />
+          </div>
+
+          <div class="tm-field">
+            <div class="tm-label">Status</div>
+            <select v-model="form.status" class="tm-native">
+              <option value="todo">To do</option>
+              <option value="in_progress">In progress</option>
+              <option value="done">Done</option>
+            </select>
           </div>
         </div>
 
-        <div v-if="form.scope !== 'group'" class="tm-row">
+        <div v-if="form.scope !== 'group'" class="tm-row tm-row--1">
           <div class="tm-field">
-            <div class="tm-label">Категорія</div>
+            <div class="tm-label">Category</div>
             <select v-model="form.categoryId" class="tm-native" :disabled="!categories.length">
-              <option value="" disabled>Оберіть категорію</option>
+              <option value="" disabled>Select a category</option>
               <option v-for="c in categories" :key="c.id" :value="c.id">
                 {{ c.name }}
               </option>
             </select>
           </div>
-
-          <div class="tm-field">
-            <div class="tm-label">Статус</div>
-            <select v-model="form.status" class="tm-native">
-              <option value="todo">To do</option>
-              <option value="in_progress">In progress</option>
-              <option value="done">Done</option>
-            </select>
-          </div>
-        </div>
-
-        <div v-else class="tm-row">
-          <div class="tm-field">
-            <div class="tm-label">Статус</div>
-            <select v-model="form.status" class="tm-native">
-              <option value="todo">To do</option>
-              <option value="in_progress">In progress</option>
-              <option value="done">Done</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="tm-field">
-          <div class="tm-label">Пріоритет</div>
-          <select v-model="form.priority" class="tm-native">
-            <option value="low">Низький</option>
-            <option value="medium">Середній</option>
-            <option value="high">Високий ★</option>
-          </select>
         </div>
 
         <div class="tm-footer">
-          <BaseButton variant="ghost" type="button" @click="close">Скасувати</BaseButton>
+          <BaseButton variant="ghost" type="button" @click="close">Cancel</BaseButton>
           <BaseButton variant="solid" type="submit">
-            {{ isEdit ? 'Зберегти' : 'Створити' }}
+            {{ isEdit ? 'Save' : 'Create' }}
           </BaseButton>
         </div>
       </form>
@@ -364,4 +353,115 @@ const onSubmit = () => {
   </BaseModal>
 </template>
 
-<style src="./TaskModal.css" scoped />
+<style scoped>
+.tm-scroll {
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.tm-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tm-row {
+  display: grid;
+  gap: 8px;
+}
+
+.tm-row--1 {
+  grid-template-columns: 1fr;
+}
+
+.tm-row--2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.tm-row--3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.tm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+}
+
+.tm-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted, #6b7280);
+}
+
+.tm-textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-soft, #e5e7eb);
+  font-size: 12px;
+  font-family: inherit;
+  background: #fff;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tm-textarea:focus {
+  outline: none;
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.tm-native {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-soft, #e5e7eb);
+  font-size: 12px;
+  font-family: inherit;
+  background: #fff;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tm-native:focus {
+  outline: none;
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.tm-footer {
+  margin-top: 4px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+@media (max-width: 900px) {
+  .tm-row--3 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .tm-row--2,
+  .tm-row--3 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .tm-scroll {
+    max-height: calc(100vh - 180px);
+  }
+}
+
+@media (max-width: 420px) {
+  .tm-row--2,
+  .tm-row--3 {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

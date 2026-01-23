@@ -232,85 +232,127 @@ const handleSaveTask = async (payload: SavePayload) => {
 
     <TasksFilters :tasks="flatTasks" @update:filteredTasks="onFilteredUpdate($event)" />
 
-    <div class="pd4u-week-row">
-      <div
-        v-for="day in weekDays"
-        :key="day.iso"
-        class="pd4u-week-header"
-        @click="openDay(day.iso)"
-      >
-        <span
-          :class="[
-            'pd4u-week-header__weekday',
-            day.iso === todayIso ? 'text-brand-primary' : 'text-text-muted',
-          ]"
+    <div class="pd4u-week-desktop">
+      <div class="pd4u-week-row">
+        <div
+          v-for="day in weekDays"
+          :key="day.iso"
+          class="pd4u-week-header"
+          @click="openDay(day.iso)"
         >
-          {{ day.weekday }}
-        </span>
+          <span
+            :class="[
+              'pd4u-week-header__weekday',
+              day.iso === todayIso ? 'text-brand-primary' : 'text-text-muted',
+            ]"
+          >
+            {{ day.weekday }}
+          </span>
 
-        <DateBadge
-          :day="day.dayNumber"
-          :is-today="day.iso === todayIso"
-          :has-tasks="tasksStore.tasksByDate(day.iso).length > 0"
-        />
+          <DateBadge
+            :day="day.dayNumber"
+            :is-today="day.iso === todayIso"
+            :has-tasks="tasksStore.tasksByDate(day.iso).length > 0"
+          />
+        </div>
+      </div>
+
+      <WeekMultiDayRow :week-start-iso="weekStartIso" :week-end-iso="weekEndIso" :tasks="tasksStore.tasks" />
+
+      <div class="pd4u-week-cells">
+        <div
+          v-for="col in colsToRender"
+          :key="col.day.iso"
+          class="pd4u-week-cell"
+          :class="{ 'pd4u-week-cell--today': col.day.iso === todayIso }"
+          @click="openDay(col.day.iso)"
+        >
+          <div v-if="col.tasks.length === 0" class="pd4u-week-empty">No tasks</div>
+
+          <ul v-else class="pd4u-week-tasks">
+            <li
+              v-for="task in col.tasks"
+              :key="task.id"
+              class="pd4u-week-task"
+              :style="weekTaskStyle(task)"
+              :class="[
+                getPriority(task.priority as UIPriority | undefined) === 'high'
+                  ? 'pd4u-week-task--high'
+                  : '',
+                getPriority(task.priority as UIPriority | undefined) === 'medium'
+                  ? 'pd4u-week-task--medium'
+                  : '',
+              ]"
+              @click.stop="openEditTask(task)"
+            >
+              <div v-if="task.startTime || task.endTime" class="pd4u-week-task__time">
+                {{ task.startTime || '??:??' }} – {{ task.endTime || '...' }}
+              </div>
+
+              <div
+                :class="[
+                  'pd4u-week-task__title',
+                  getPriority(task.priority as UIPriority | undefined) === 'medium'
+                    ? 'pd4u-week-task__title--medium'
+                    : '',
+                  task.status === 'done' ? 'line-through text-text-muted' : 'text-text-primary',
+                ]"
+              >
+                <span
+                  v-if="getPriority(task.priority as UIPriority | undefined) === 'high'"
+                  class="pd4u-week-task__star"
+                  aria-hidden="true"
+                  >★</span
+                >
+                {{ task.title }}
+              </div>
+
+              <div class="pd4u-week-task__badge">
+                {{ getBadgeLabel(task) }}
+              </div>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
 
-    <WeekMultiDayRow :week-start-iso="weekStartIso" :week-end-iso="weekEndIso" :tasks="tasksStore.tasks" />
-
-    <div class="pd4u-week-cells">
+    <div class="pd4u-week-mobile">
       <div
         v-for="col in colsToRender"
         :key="col.day.iso"
-        class="pd4u-week-cell"
-        :class="{ 'pd4u-week-cell--today': col.day.iso === todayIso }"
-        @click="openDay(col.day.iso)"
+        class="pd4u-week-mobile-row"
+        :class="{ 'pd4u-week-mobile-row--today': col.day.iso === todayIso }"
       >
-        <div v-if="col.tasks.length === 0" class="pd4u-week-empty">No tasks</div>
+        <button type="button" class="pd4u-week-mobile-day" @click="openDay(col.day.iso)">
+          <span class="pd4u-week-mobile-day__weekday">
+            {{ col.day.weekday }}
+          </span>
+          <span class="pd4u-week-mobile-day__num">
+            {{ col.day.dayNumber }}
+          </span>
+        </button>
 
-        <ul v-else class="pd4u-week-tasks">
-          <li
-            v-for="task in col.tasks"
-            :key="task.id"
-            class="pd4u-week-task"
-            :style="weekTaskStyle(task)"
-            :class="[
-              getPriority(task.priority as UIPriority | undefined) === 'high'
-                ? 'pd4u-week-task--high'
-                : '',
-              getPriority(task.priority as UIPriority | undefined) === 'medium'
-                ? 'pd4u-week-task--medium'
-                : '',
-            ]"
-            @click.stop="openEditTask(task)"
-          >
-            <div v-if="task.startTime || task.endTime" class="pd4u-week-task__time">
-              {{ task.startTime || '??:??' }} – {{ task.endTime || '...' }}
-            </div>
+        <div class="pd4u-week-mobile-tasks" @click="openDay(col.day.iso)">
+          <div v-if="col.tasks.length === 0" class="pd4u-week-empty">No tasks</div>
 
-            <div
-              :class="[
-                'pd4u-week-task__title',
-                getPriority(task.priority as UIPriority | undefined) === 'medium'
-                  ? 'pd4u-week-task__title--medium'
-                  : '',
-                task.status === 'done' ? 'line-through text-text-muted' : 'text-text-primary',
-              ]"
+          <ul v-else class="pd4u-week-mobile-pills">
+            <li
+              v-for="task in col.tasks"
+              :key="task.id"
+              class="pd4u-week-pill"
+              :style="weekTaskStyle(task)"
+              @click.stop="openEditTask(task)"
             >
               <span
                 v-if="getPriority(task.priority as UIPriority | undefined) === 'high'"
-                class="pd4u-week-task__star"
+                class="pd4u-week-pill__star"
                 aria-hidden="true"
                 >★</span
               >
-              {{ task.title }}
-            </div>
-
-            <div class="pd4u-week-task__badge">
-              {{ getBadgeLabel(task) }}
-            </div>
-          </li>
-        </ul>
+              <span class="pd4u-week-pill__title">{{ task.title }}</span>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
 
@@ -443,5 +485,106 @@ const handleSaveTask = async (payload: SavePayload) => {
   align-self: flex-start;
   background: var(--pd4u-pill-bg, #eef2ff);
   color: var(--pd4u-pill-text, #2563eb);
+}
+
+.pd4u-week-mobile {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .pd4u-week-desktop {
+    display: none;
+  }
+
+  .pd4u-week-mobile {
+    display: block;
+  }
+
+  .pd4u-week-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .pd4u-week-nav {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .pd4u-week-mobile-row {
+    display: grid;
+    grid-template-columns: 54px 1fr;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 0;
+  }
+
+  .pd4u-week-mobile-row--today .pd4u-week-mobile-day__weekday,
+  .pd4u-week-mobile-row--today .pd4u-week-mobile-day__num {
+    color: #2563eb;
+  }
+
+  .pd4u-week-mobile-day {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .pd4u-week-mobile-day__weekday {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--pd4u-text-muted, #6b7280);
+    text-transform: uppercase;
+  }
+
+  .pd4u-week-mobile-day__num {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--pd4u-text-muted, #6b7280);
+  }
+
+  .pd4u-week-mobile-tasks {
+    min-height: 34px;
+    cursor: pointer;
+  }
+
+  .pd4u-week-mobile-pills {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .pd4u-week-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 6px 10px;
+    border: 1px solid rgba(15, 23, 42, 0.18);
+    background: #fff;
+    font-size: 12px;
+    line-height: 1;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+
+  .pd4u-week-pill__title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pd4u-week-pill__star {
+    font-size: 11px;
+    color: var(--pd4u-priority-high, #f59e0b);
+    transform: translateY(-1px);
+  }
 }
 </style>
