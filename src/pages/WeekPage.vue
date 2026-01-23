@@ -60,9 +60,15 @@ const getBadgeLabel = (task: Task) => {
 const today = new Date()
 const todayIso = toLocalIso(today)
 
-const startOfWeek = new Date(today)
-const weekdayIndex = startOfWeek.getDay() || 7
-startOfWeek.setDate(startOfWeek.getDate() - (weekdayIndex - 1))
+const weekCursor = ref(new Date())
+
+const startOfWeekFrom = (base: Date) => {
+  const d = new Date(base)
+  const weekdayIndex = d.getDay() || 7
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() - (weekdayIndex - 1))
+  return d
+}
 
 type WeekDay = {
   iso: string
@@ -70,19 +76,39 @@ type WeekDay = {
   dayNumber: number
 }
 
-const weekDays: WeekDay[] = Array.from({ length: 7 }, (_, i) => {
-  const d = new Date(startOfWeek)
-  d.setDate(startOfWeek.getDate() + i)
+const weekDays = computed<WeekDay[]>(() => {
+  const start = startOfWeekFrom(weekCursor.value)
 
-  const iso = toLocalIso(d)
-  const weekday = d.toLocaleDateString('en-US', { weekday: 'short' })
-  const dayNumber = d.getDate()
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start)
+    d.setDate(start.getDate() + i)
 
-  return { iso, weekday, dayNumber }
+    const iso = toLocalIso(d)
+    const weekday = d.toLocaleDateString('en-US', { weekday: 'short' })
+    const dayNumber = d.getDate()
+
+    return { iso, weekday, dayNumber }
+  })
 })
 
-const weekStartIso = weekDays[0]!.iso
-const weekEndIso = weekDays[6]!.iso
+const weekStartIso = computed(() => weekDays.value[0]!.iso)
+const weekEndIso = computed(() => weekDays.value[6]!.iso)
+
+const goPrevWeek = () => {
+  const d = new Date(weekCursor.value)
+  d.setDate(d.getDate() - 7)
+  weekCursor.value = d
+}
+
+const goNextWeek = () => {
+  const d = new Date(weekCursor.value)
+  d.setDate(d.getDate() + 7)
+  weekCursor.value = d
+}
+
+const goThisWeek = () => {
+  weekCursor.value = new Date()
+}
 
 type UIPriority = 'low' | 'medium' | 'high'
 
@@ -95,7 +121,7 @@ const priorityOrder: Record<UIPriority, number> = {
 const getPriority = (p?: UIPriority) => p ?? 'low'
 
 const baseTasksByDay = computed(() =>
-  weekDays.map(dayInfo => {
+  weekDays.value.map(dayInfo => {
     const tasks = tasksStore
       .tasksByDate(dayInfo.iso)
       .filter(task => !(task.endDate && task.endDate !== task.date))
@@ -164,7 +190,15 @@ const handleSaveTask = async (payload: SavePayload) => {
 
 <template>
   <div class="page-container">
-    <h1>Weekly overview</h1>
+    <div class="pd4u-week-top">
+      <h1>Weekly overview</h1>
+
+      <div class="pd4u-week-nav">
+        <button type="button" class="pd4u-week-nav__btn" @click="goPrevWeek">← Prev</button>
+        <button type="button" class="pd4u-week-nav__btn" @click="goThisWeek">Today</button>
+        <button type="button" class="pd4u-week-nav__btn" @click="goNextWeek">Next →</button>
+      </div>
+    </div>
 
     <TasksFilters
       :tasks="baseTasksByDay.flatMap(x => x.tasks)"
@@ -268,6 +302,30 @@ const handleSaveTask = async (payload: SavePayload) => {
 </template>
 
 <style scoped>
+.pd4u-week-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.pd4u-week-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pd4u-week-nav__btn {
+  border: 1px solid var(--pd4u-card-border, #e5e7eb);
+  background: var(--pd4u-card-bg, #ffffff);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
 .pd4u-week-row {
   display: grid;
   grid-template-columns: repeat(7, 1fr);

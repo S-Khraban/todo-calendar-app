@@ -6,7 +6,7 @@ import { useGroupsStore } from '@/stores/groups'
 import type { Task, TaskStatus } from '@/types'
 
 type ScopeFilter = 'all' | 'group' | 'personal'
-type StatusFilter = TaskStatus | 'all'
+type StatusFilter = TaskStatus | 'all' | 'overdue'
 
 const props = defineProps<{
   tasks: Task[]
@@ -42,10 +42,27 @@ const groupOptions = computed(() => (groups.value ?? []).map(g => ({ id: g.group
 const getTaskGroupId = (t: Task) => ((t as any).groupId ?? (t as any).group_id ?? null) as string | null
 const isGroupTask = (t: Task) => !!getTaskGroupId(t)
 
+const toIsoDay = (d: Date) => {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+const todayIso = toIsoDay(new Date())
+
+const isOverdueTask = (t: Task) => {
+  const end = (t.endDate ?? t.date) as string | undefined
+  if (!end) return false
+  return end < todayIso && t.status !== 'done'
+}
+
 const filteredTasks = computed(() => {
   let list = props.tasks
 
-  if (status.value !== 'all') {
+  if (status.value === 'overdue') {
+    list = list.filter(t => isOverdueTask(t))
+  } else if (status.value !== 'all') {
     list = list.filter(t => t.status === status.value)
   }
 
@@ -98,38 +115,39 @@ const resetFilters = () => {
 <template>
   <div class="flex flex-wrap items-center gap-3 mb-4 text-sm">
     <label class="flex items-center gap-2">
-      <span class="text-text-muted">Статус:</span>
+      <span class="text-text-muted">Status:</span>
       <select
         v-model="status"
         class="px-2 py-1 rounded-md border border-border-soft bg-white text-text-primary"
       >
-        <option value="all">Всі</option>
+        <option value="all">All</option>
         <option value="todo">Planned</option>
         <option value="in_progress">In progress</option>
         <option value="done">Done</option>
+        <option value="overdue">Overdue</option>
       </select>
     </label>
 
     <label class="flex items-center gap-2">
-      <span class="text-text-muted">Тип:</span>
+      <span class="text-text-muted">Type:</span>
       <select
         v-model="scope"
         class="px-2 py-1 rounded-md border border-border-soft bg-white text-text-primary"
       >
-        <option value="all">Всі</option>
-        <option value="group">Групові</option>
-        <option value="personal">Індивідуальні</option>
+        <option value="all">All</option>
+        <option value="group">Group</option>
+        <option value="personal">Personal</option>
       </select>
     </label>
 
     <label v-if="scope === 'group'" class="flex items-center gap-2">
-      <span class="text-text-muted">Група:</span>
+      <span class="text-text-muted">Group:</span>
       <select
         v-model="groupId"
         class="px-2 py-1 rounded-md border border-border-soft bg-white text-text-primary"
         :disabled="groupOptions.length === 0"
       >
-        <option value="all">Всі групи</option>
+        <option value="all">All groups</option>
         <option v-for="g in groupOptions" :key="g.id" :value="g.id">
           {{ g.name }}
         </option>
@@ -137,13 +155,13 @@ const resetFilters = () => {
     </label>
 
     <label v-if="scope === 'personal'" class="flex items-center gap-2">
-      <span class="text-text-muted">Категорія:</span>
+      <span class="text-text-muted">Category:</span>
       <select
         v-model="categoryId"
         class="px-2 py-1 rounded-md border border-border-soft bg-white text-text-primary"
         :disabled="categoryOptions.length === 0"
       >
-        <option value="all">Всі категорії</option>
+        <option value="all">All categories</option>
         <option v-for="c in categoryOptions" :key="c.id" :value="c.id">
           {{ c.name }}
         </option>
@@ -155,7 +173,7 @@ const resetFilters = () => {
       class="px-3 py-1.5 rounded-md border border-border-soft bg-white text-text-primary hover:bg-app-surfaceSoft"
       @click="resetFilters"
     >
-      🔄️ Скинути фільтри
+      🔄 Reset filters
     </button>
   </div>
 </template>

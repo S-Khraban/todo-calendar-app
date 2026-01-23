@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useTasksStore } from '@/stores/tasks'
 import { useCategoriesStore } from '@/stores/categories'
 import { useGroupsStore } from '@/stores/groups'
@@ -9,6 +9,7 @@ import type { Task, TaskStatus, TaskPriority } from '@/types'
 import TaskModal from '@/components/organisms/TaskModal.vue'
 import TasksFilters from '@/components/organisms/TasksFilters.vue'
 import { toLocalIso, formatFullDateUA } from '@/utils/date'
+import BaseButton from '@/components/ui/BaseButton.vue'
 
 const tasksStore = useTasksStore()
 const categoriesStore = useCategoriesStore()
@@ -17,6 +18,7 @@ const groupsStore = useGroupsStore()
 const { visibleCategories } = storeToRefs(categoriesStore)
 const { groups } = storeToRefs(groupsStore)
 const route = useRoute()
+const router = useRouter()
 
 onMounted(async () => {
   await Promise.all([categoriesStore.fetchCategories(), groupsStore.fetchMyGroups(), tasksStore.load()])
@@ -58,6 +60,25 @@ const currentDate = computed(() => {
   return param || todayIso
 })
 
+const addDaysIso = (iso: string, delta: number) => {
+  const parts = iso.split('-')
+  const y = Number(parts[0] ?? 1970)
+  const m = Number(parts[1] ?? 1)
+  const d = Number(parts[2] ?? 1)
+
+  const date = new Date(y, m - 1, d)
+  date.setDate(date.getDate() + delta)
+  return toLocalIso(date)
+}
+
+const goToDate = (iso: string) => {
+  router.push({ name: 'date', params: { date: iso } })
+}
+
+const goPrevDay = () => goToDate(addDaysIso(currentDate.value, -1))
+const goNextDay = () => goToDate(addDaysIso(currentDate.value, 1))
+const goToToday = () => goToDate(todayIso)
+
 const baseTasksForDate = computed(() =>
   tasksStore
     .tasksByDate(currentDate.value)
@@ -71,6 +92,14 @@ const baseTasksForDate = computed(() =>
 )
 
 const filteredTasks = ref<Task[]>([])
+watch(
+  () => baseTasksForDate.value,
+  v => {
+    filteredTasks.value = v
+  },
+  { immediate: true },
+)
+
 const currentDateLabel = computed(() => formatFullDateUA(currentDate.value))
 const hasTasks = computed(() => filteredTasks.value.length > 0)
 
@@ -121,8 +150,17 @@ const toggleStatus = (task: Task) => {
 
 <template>
   <div class="page-container">
-    <header class="mb-4 space-y-1">
-      <h1 class="text-xl font-semibold text-text-primary">Tasks for {{ currentDateLabel }}</h1>
+    <header class="mb-4 space-y-2">
+      <div class="flex items-center justify-between gap-3">
+        <h1 class="text-xl font-semibold text-text-primary">Tasks for {{ currentDateLabel }}</h1>
+
+        <div class="flex items-center gap-2 shrink-0">
+          <BaseButton size="sm" variant="outline" @click="goPrevDay">← Prev</BaseButton>
+          <BaseButton size="sm" variant="outline" @click="goToToday">Today</BaseButton>
+          <BaseButton size="sm" variant="outline" @click="goNextDay">Next →</BaseButton>
+        </div>
+      </div>
+
       <p class="text-sm text-text-muted">
         {{ hasTasks ? 'Here are your tasks for this day.' : 'No tasks yet, add one below.' }}
       </p>

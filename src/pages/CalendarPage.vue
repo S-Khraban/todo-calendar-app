@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useTasksStore } from '@/stores/tasks'
 import { useCategoriesStore } from '@/stores/categories'
@@ -67,6 +67,33 @@ type DayCell = {
   showTodo: boolean
 }
 
+type UIPriority = 'low' | 'medium' | 'high'
+
+const priorityOrder: Record<UIPriority, number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+}
+
+const getPriority = (p?: UIPriority) => p ?? 'low'
+
+const filteredAllTasks = ref<Task[]>([])
+const onFilteredUpdate = (flat: Task[]) => {
+  filteredAllTasks.value = flat
+}
+
+const filteredTasksByDate = computed<Record<string, Task[]>>(() => {
+  const map: Record<string, Task[]> = {}
+  for (const t of filteredAllTasks.value) {
+    const key = t.date
+    if (!map[key]) map[key] = []
+    map[key]!.push(t)
+  }
+  return map
+})
+
+const getFilteredTasksForDay = (iso: string) => filteredTasksByDate.value[iso] ?? []
+
 const monthDays = computed<DayCell[]>(() => {
   const year = currentMonth.value.getFullYear()
   const month = currentMonth.value.getMonth()
@@ -96,12 +123,11 @@ const monthDays = computed<DayCell[]>(() => {
     const isCurrentMonth = d.getMonth() === month
     const isToday = iso === todayIso
 
-    const tasksForDay = tasksStore.tasksByDate(iso)
+    const tasksForDay = getFilteredTasksForDay(iso)
 
     const hasTodo = tasksForDay.some(t => t.status === 'todo')
     const hasInProgress = tasksForDay.some(t => t.status === 'in_progress')
     const hasOverdue = iso < todayIso && tasksForDay.some(t => t.status !== 'done')
-
     const showTodo = hasTodo && !hasOverdue
 
     cells.push({
@@ -118,16 +144,6 @@ const monthDays = computed<DayCell[]>(() => {
   return cells
 })
 
-type UIPriority = 'low' | 'medium' | 'high'
-
-const priorityOrder: Record<UIPriority, number> = {
-  high: 0,
-  medium: 1,
-  low: 2,
-}
-
-const getPriority = (p?: UIPriority) => p ?? 'low'
-
 const baseSelectedTasks = computed(() =>
   tasksStore
     .tasksByDate(selectedDate.value)
@@ -143,20 +159,11 @@ const baseSelectedTasks = computed(() =>
     }),
 )
 
-const filteredSelectedTasks = ref<Task[]>([])
-
-watch(
-  () => baseSelectedTasks.value,
-  v => {
-    filteredSelectedTasks.value = v
-  },
-  { immediate: true },
-)
-
-const onFilteredUpdate = (flat: Task[]) => {
-  const set = new Set(flat.map(t => t.id))
-  filteredSelectedTasks.value = baseSelectedTasks.value.filter(t => set.has(t.id))
-}
+const selectedFilteredTasks = computed(() => {
+  const list = getFilteredTasksForDay(selectedDate.value)
+  const set = new Set(list.map(t => t.id))
+  return baseSelectedTasks.value.filter(t => set.has(t.id))
+})
 
 const changeMonth = (delta: number) => {
   const d = new Date(currentMonth.value)
@@ -220,16 +227,14 @@ const handleToggleStatus = (id: string) => {
 
 <template>
   <div class="page-container">
-    <div class="flex items-center justify-between mb-4 gap-3">
-      <h1 class="text-xl font-semibold text-text-primary">Tasks calendar</h1>
+    <div class="calendar-filters-row">
+      <TasksFilters
+        :tasks="tasksStore.tasks"
+        @update:filteredTasks="onFilteredUpdate($event)"
+      />
 
       <BaseButton size="sm" variant="outline" @click="goToToday">Today</BaseButton>
     </div>
-
-    <TasksFilters
-      :tasks="baseSelectedTasks"
-      @update:filteredTasks="onFilteredUpdate($event)"
-    />
 
     <div class="rounded-lg border border-border-soft bg-app-surface shadow-sm p-3 md:p-4">
       <div class="flex items-center justify-between mb-3 text-sm">
@@ -268,7 +273,7 @@ const handleToggleStatus = (id: string) => {
           >
             <div class="mt-1">
               <div
-                class="flex items-center justify-center w-7 h-7 rounded-full"
+                class="flex items-center justify-center w-6 h-6 rounded-full"
                 :class="[
                   day.isToday && !(selectedDate === day.iso)
                     ? 'bg-brand-primarySoft text-brand-primary'
@@ -292,7 +297,7 @@ const handleToggleStatus = (id: string) => {
     <div class="mt-6">
       <DayTasksList
         :date-label="selectedDate"
-        :tasks="filteredSelectedTasks"
+        :tasks="selectedFilteredTasks"
         :category-map="categoryMap"
         :get-badge-label="getBadgeLabel"
         @add="openCreate"
@@ -309,5 +314,18 @@ const handleToggleStatus = (id: string) => {
     />
   </div>
 </template>
+
+<style scoped>
+.calendar-filters-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.calendar-filters-row > :first-child {
+  flex: 1;
+}
+</style>
 
 <style src="./CalendarPage.css" scoped />

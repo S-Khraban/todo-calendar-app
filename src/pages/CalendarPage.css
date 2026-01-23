@@ -4,7 +4,7 @@
 }
 
 .calendar-day {
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 1 / 0.5;
 }
 
 .calendar-indicator {
