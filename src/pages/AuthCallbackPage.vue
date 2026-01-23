@@ -6,15 +6,28 @@ import { supabase } from '@/services/supabaseClient'
 const router = useRouter()
 
 onMounted(async () => {
-  await supabase.auth.getSession()
-  await router.replace('/')
+  const url = new URL(window.location.href)
+  const next = url.searchParams.get('next') || '/week'
+  const code = url.searchParams.get('code')
+
+  if (!code) {
+    await router.replace('/user')
+    return
+  }
+
+  const { error } = await supabase.auth.exchangeCodeForSession(code)
+
+  if (error) {
+    await router.replace('/user')
+    return
+  }
+
+  await router.replace(next)
 })
 </script>
 
 <template>
-  <div class="auth-callback">
-    Signing you in…
-  </div>
+  <div class="auth-callback">Signing you in…</div>
 </template>
 
 <style scoped>
