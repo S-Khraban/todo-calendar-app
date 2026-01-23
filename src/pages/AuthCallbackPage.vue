@@ -7,7 +7,10 @@ const router = useRouter()
 
 onMounted(async () => {
   const url = new URL(window.location.href)
-  const next = url.searchParams.get('next') || '/week'
+
+  const nextRaw = url.searchParams.get('next')
+  const next = nextRaw ? decodeURIComponent(nextRaw) : '/week'
+
   const code = url.searchParams.get('code')
 
   if (!code) {
