@@ -22,10 +22,7 @@ const emit = defineEmits<{
   (e: 'delete', id: string | number): void
 }>()
 
-const isLongTerm = computed(() => {
-  if (!props.endDate) return false
-  return props.endDate !== props.startDate
-})
+const isLongTerm = computed(() => (props.endDate ? props.endDate !== props.startDate : false))
 
 const isHigh = computed(() => props.priority === 'high')
 const isMedium = computed(() => props.priority === 'medium')
@@ -34,13 +31,8 @@ const handleToggle = (value: boolean) => {
   emit('toggleCompleted', { id: props.id, value })
 }
 
-const handleEdit = () => {
-  emit('edit', props.id)
-}
-
-const handleDelete = () => {
-  emit('delete', props.id)
-}
+const handleEdit = () => emit('edit', props.id)
+const handleDelete = () => emit('delete', props.id)
 </script>
 
 <template>
@@ -52,51 +44,33 @@ const handleDelete = () => {
     }"
   >
     <div class="pd4u-task-item__main">
-      <Checkbox :model-value="props.isCompleted" @update:model-value="handleToggle">
+      <Checkbox :model-value="isCompleted" @update:model-value="handleToggle">
         <span
           class="pd4u-task-item__title"
           :class="{
-            'pd4u-task-item__title--done': props.isCompleted,
+            'pd4u-task-item__title--done': isCompleted,
             'pd4u-task-item__title--medium': isMedium,
           }"
         >
-          <span v-if="isHigh" class="pd4u-task-item__star" aria-hidden="true">★</span>
-          {{ props.title }}
+          <span v-if="isHigh" class="pd4u-task-item__star">★</span>
+          {{ title }}
         </span>
       </Checkbox>
     </div>
 
     <div class="pd4u-task-item__meta">
       <div class="pd4u-task-item__dates">
-        <DateBadge
-          :day="new Date(props.startDate).getDate()"
-          :is-today="props.isToday"
-        />
+        <DateBadge :day="new Date(startDate).getDate()" :is-today="isToday" />
 
         <span v-if="isLongTerm" class="pd4u-task-item__date-range">
           →
-          <DateBadge
-            :day="props.endDate ? new Date(props.endDate).getDate() : ''"
-          />
+          <DateBadge :day="endDate ? new Date(endDate).getDate() : ''" />
         </span>
       </div>
 
       <div class="pd4u-task-item__actions">
-        <Button
-          variant="ghost"
-          size="sm"
-          @click="handleEdit"
-        >
-          Edit
-        </Button>
-
-        <Button
-          variant="ghost"
-          size="sm"
-          @click="handleDelete"
-        >
-          Del
-        </Button>
+        <Button variant="ghost" size="sm" @click="handleEdit">Edit</Button>
+        <Button variant="ghost" size="sm" @click="handleDelete">Del</Button>
       </div>
     </div>
   </div>
@@ -111,19 +85,14 @@ const handleDelete = () => {
 
   padding: 8px 10px;
   border-radius: var(--pd4u-radius-sm, 8px);
-  background-color: var(--pd4u-card-bg, #ffffff);
-  border: 1px solid var(--pd4u-card-border, #e5e7eb);
+  background-color: var(--group-bg, #fff);
+  border: 1px solid var(--group-accent, #e5e7eb);
 
-  box-sizing: border-box;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .pd4u-task-item--high {
-  border-color: var(--pd4u-priority-high-border, #fbbf24);
   box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.35);
-}
-
-.pd4u-task-item--medium {
-  border-color: var(--pd4u-priority-medium-border, #d1d5db);
 }
 
 .pd4u-task-item__main {
@@ -161,12 +130,9 @@ const handleDelete = () => {
 }
 
 .pd4u-task-item__star {
-  display: inline-block;
   margin-right: 6px;
   font-size: 12px;
-  line-height: 1;
   color: var(--pd4u-priority-high, #f59e0b);
-  transform: translateY(-1px);
 }
 
 .pd4u-task-item__title--medium {

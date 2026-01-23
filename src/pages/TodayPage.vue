@@ -10,6 +10,7 @@ import TaskModal from '@/components/organisms/TaskModal.vue'
 import TasksFilters from '@/components/organisms/TasksFilters.vue'
 import { toLocalIso, formatFullDateUA } from '@/utils/date'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import { withAlpha } from '@/utils/color'
 
 const tasksStore = useTasksStore()
 const categoriesStore = useCategoriesStore()
@@ -21,7 +22,11 @@ const route = useRoute()
 const router = useRouter()
 
 onMounted(async () => {
-  await Promise.all([categoriesStore.fetchCategories(), groupsStore.fetchMyGroups(), tasksStore.load()])
+  await Promise.all([
+    categoriesStore.fetchCategories(),
+    groupsStore.fetchMyGroups(),
+    tasksStore.load(),
+  ])
 })
 
 const categoryMap = computed<Record<string, string>>(() => {
@@ -40,10 +45,35 @@ const groupMap = computed<Record<string, string>>(() => {
   return map
 })
 
-const getBadgeLabel = (task: Task) => {
-  const groupId = (task as any).groupId ?? (task as any).group_id ?? null
-  if (groupId) return groupMap.value[groupId] ?? 'Group'
+const groupColorMap = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const g of groups.value ?? []) {
+    map[g.groupId] = g.color
+  }
+  return map
+})
 
+const getTaskGroupId = (task: Task) =>
+  (task as any).groupId ?? (task as any).group_id ?? null
+
+const getTaskGroupColor = (task: Task) => {
+  const groupId = getTaskGroupId(task)
+  if (!groupId) return null
+  return groupColorMap.value[groupId] ?? null
+}
+
+const taskRowStyle = (task: Task) => {
+  const color = getTaskGroupColor(task)
+  if (!color) return {}
+  return {
+    backgroundColor: withAlpha(color, 0.1),
+    borderColor: color,
+  }
+}
+
+const getBadgeLabel = (task: Task) => {
+  const groupId = getTaskGroupId(task)
+  if (groupId) return groupMap.value[groupId] ?? 'Group'
   const id = task.categoryId ?? null
   if (!id) return '—'
   return categoryMap.value[id] ?? '—'
@@ -62,12 +92,18 @@ const currentDate = computed(() => {
 
 const addDaysIso = (iso: string, delta: number) => {
   const parts = iso.split('-')
-  const y = Number(parts[0] ?? 1970)
-  const m = Number(parts[1] ?? 1)
-  const d = Number(parts[2] ?? 1)
 
-  const date = new Date(y, m - 1, d)
+  const year = Number(parts[0])
+  const month = Number(parts[1])
+  const day = Number(parts[2])
+
+  const safeYear = Number.isFinite(year) ? year : 1970
+  const safeMonth = Number.isFinite(month) ? month - 1 : 0
+  const safeDay = Number.isFinite(day) ? day : 1
+
+  const date = new Date(safeYear, safeMonth, safeDay)
   date.setDate(date.getDate() + delta)
+
   return toLocalIso(date)
 }
 
@@ -139,7 +175,6 @@ const handleSaveTask = async (payload: SavePayload) => {
     await tasksStore.updateTask(payload)
     return
   }
-
   await tasksStore.addTask(payload)
 }
 
@@ -152,7 +187,9 @@ const toggleStatus = (task: Task) => {
   <div class="page-container">
     <header class="mb-4 space-y-2">
       <div class="flex items-center justify-between gap-3">
-        <h1 class="text-xl font-semibold text-text-primary">Tasks for {{ currentDateLabel }}</h1>
+        <h1 class="text-xl font-semibold text-text-primary">
+          Tasks for {{ currentDateLabel }}
+        </h1>
 
         <div class="flex items-center gap-2 shrink-0">
           <BaseButton size="sm" variant="outline" @click="goPrevDay">← Prev</BaseButton>
@@ -182,18 +219,20 @@ const toggleStatus = (task: Task) => {
     </section>
 
     <section>
-      <div v-if="filteredTasks.length === 0" class="text-sm text-text-muted">No tasks for this day.</div>
+      <div v-if="filteredTasks.length === 0" class="text-sm text-text-muted">
+        No tasks for this day.
+      </div>
 
       <ul v-else class="flex flex-col gap-2 text-sm">
         <li
           v-for="task in filteredTasks"
           :key="task.id"
-          class="flex items-center gap-3 px-3 py-2 rounded-md border border-border-soft bg-app-surface shadow-sm"
+          class="flex items-center gap-3 px-3 py-2 rounded-md border shadow-sm"
+          :style="taskRowStyle(task)"
           :class="[
             getPriority(task.priority as UIPrio | undefined) === 'high'
-              ? 'ring-1 ring-amber-400/60 border-amber-300/60'
+              ? 'ring-1 ring-amber-400/60'
               : '',
-            getPriority(task.priority as UIPrio | undefined) === 'medium' ? 'border-border-soft/80' : '',
           ]"
         >
           <input
@@ -210,13 +249,14 @@ const toggleStatus = (task: Task) => {
                 getPriority(task.priority as UIPrio | undefined) === 'medium'
                   ? 'font-semibold'
                   : 'font-medium',
-                task.status === 'done' ? 'line-through text-text-muted' : 'text-text-primary',
+                task.status === 'done'
+                  ? 'line-through text-text-muted'
+                  : 'text-text-primary',
               ]"
             >
               <span
                 v-if="getPriority(task.priority as UIPrio | undefined) === 'high'"
                 class="mr-1 text-amber-500"
-                aria-hidden="true"
               >
                 ★
               </span>
@@ -235,7 +275,9 @@ const toggleStatus = (task: Task) => {
             {{ getBadgeLabel(task) }}
           </span>
 
-          <button type="button" class="text-xs text-brand-primary" @click="openEdit(task)">Edit</button>
+          <button type="button" class="text-xs text-brand-primary" @click="openEdit(task)">
+            Edit
+          </button>
         </li>
       </ul>
     </section>

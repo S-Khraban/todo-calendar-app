@@ -2,11 +2,15 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { supabase } from '@/services/supabaseClient'
 import { useGroupsStore, type GroupMemberItem, type GroupRole } from '@/stores/groups'
+import { GROUP_COLORS } from '@/constants/groupColors'
+
+type GroupColor = (typeof GROUP_COLORS)[number]
 
 const props = defineProps<{
   modelValue: boolean
   groupId: string | null
   groupName: string
+  groupColor?: string
   myRole: GroupRole
   loading: boolean
 }>()
@@ -20,6 +24,7 @@ const groupsStore = useGroupsStore()
 
 const tab = ref<'group' | 'members'>('group')
 const nameDraft = ref('')
+const colorDraft = ref<GroupColor>(GROUP_COLORS[0])
 const members = ref<GroupMemberItem[]>([])
 const localLoading = ref(false)
 const localError = ref<string | null>(null)
@@ -68,8 +73,16 @@ const loadMembers = async () => {
   }
 }
 
-const openInit = async () => {
+const initDrafts = () => {
   nameDraft.value = props.groupName
+  const incoming = (props.groupColor || GROUP_COLORS[0]) as string
+  colorDraft.value = (GROUP_COLORS.includes(incoming as GroupColor)
+    ? (incoming as GroupColor)
+    : GROUP_COLORS[0]) as GroupColor
+}
+
+const openInit = async () => {
+  initDrafts()
   await loadMe()
   await loadMembers()
 }
@@ -83,8 +96,15 @@ watch(
 
 watch(
   () => props.groupName,
-  (v) => {
-    nameDraft.value = v
+  () => {
+    if (props.modelValue) initDrafts()
+  }
+)
+
+watch(
+  () => props.groupColor,
+  () => {
+    if (props.modelValue) initDrafts()
   }
 )
 
@@ -100,20 +120,25 @@ const roleOptions = (m: GroupMemberItem): GroupRole[] => {
   return [m.role]
 }
 
-const saveName = async () => {
+const saveGroup = async () => {
   if (!props.groupId) return
   localError.value = null
   localLoading.value = true
 
   try {
-    const ok = await groupsStore.renameGroup(props.groupId, nameDraft.value.trim())
+    const ok = await groupsStore.updateGroup(props.groupId, {
+      name: nameDraft.value.trim(),
+      color: colorDraft.value,
+    })
+
     if (!ok.ok) {
-      localError.value = ok.error ?? 'Failed to rename group'
+      localError.value = ok.error ?? 'Failed to update group'
       return
     }
+
     emit('updated')
   } catch (e: any) {
-    localError.value = e?.message ?? 'Failed to rename group'
+    localError.value = e?.message ?? 'Failed to update group'
   } finally {
     localLoading.value = false
   }
@@ -231,12 +256,26 @@ onMounted(() => {
             placeholder="Group name"
           />
 
+          <label class="label" style="margin-top: 12px;">Group color</label>
+          <div class="color-presets">
+            <button
+              v-for="c in GROUP_COLORS"
+              :key="c"
+              type="button"
+              class="color-dot"
+              :class="{ 'color-dot--active': colorDraft === c }"
+              :style="{ backgroundColor: c }"
+              :disabled="props.loading || localLoading"
+              @click="colorDraft = c"
+            />
+          </div>
+
           <div class="row">
             <button
               type="button"
               class="btn"
               :disabled="props.loading || localLoading || !nameDraft.trim()"
-              @click="saveName"
+              @click="saveGroup"
             >
               Save
             </button>
@@ -408,6 +447,30 @@ onMounted(() => {
   padding: 10px 12px;
   border: 1px solid #ddd;
   border-radius: 10px;
+}
+
+.color-presets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.color-dot {
+  width: 32px;
+  height: 24px;
+  min-width: 32px;
+  min-height: 24px;
+  padding: 0;
+  display: inline-flex;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.color-dot--active {
+  border-color: #111827;
+  transform: scale(1.05);
 }
 
 .row {

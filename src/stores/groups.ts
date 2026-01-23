@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { supabase } from '@/services/supabaseClient'
+import { GROUP_COLORS } from '@/constants/groupColors'
 
 export type GroupRole = 'owner' | 'admin' | 'member'
 
@@ -8,6 +9,7 @@ export type GroupListItem = {
   groupId: string
   name: string
   role: GroupRole
+  color: string
 }
 
 export type GroupInviteItem = {
@@ -29,14 +31,11 @@ export type GroupMemberItem = {
   role: GroupRole
 }
 
-type GroupMemberRow = {
-  role: GroupRole
+type MyGroupRow = {
   group_id: string
-}
-
-type GroupRow = {
-  id: string
   name: string
+  color: string | null
+  role: GroupRole
 }
 
 export const useGroupsStore = defineStore('groups', () => {
@@ -50,67 +49,23 @@ export const useGroupsStore = defineStore('groups', () => {
     isLoading.value = true
     error.value = null
 
-    const { data: auth, error: eAuth } = await supabase.auth.getUser()
-    const user = auth?.user
+    const { data, error: e } = await supabase.rpc('get_my_groups')
 
-    if (eAuth || !user) {
-      error.value = eAuth?.message ?? 'Not authenticated'
+    if (e) {
+      error.value = e.message
       groups.value = []
       isLoading.value = false
       return
     }
 
-    const { data: members, error: e1 } = await supabase
-      .from('group_members')
-      .select('role, group_id')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+    const rows = (data ?? []) as MyGroupRow[]
 
-    if (e1) {
-      error.value = e1.message
-      groups.value = []
-      isLoading.value = false
-      return
-    }
-
-    const memberRows = (members ?? []) as GroupMemberRow[]
-    const groupIds = Array.from(new Set(memberRows.map(m => m.group_id)))
-
-    if (groupIds.length === 0) {
-      groups.value = []
-      isLoading.value = false
-      return
-    }
-
-    const { data: groupRows, error: e2 } = await supabase
-      .from('groups')
-      .select('id, name')
-      .in('id', groupIds)
-
-    if (e2) {
-      error.value = e2.message
-      groups.value = []
-      isLoading.value = false
-      return
-    }
-
-    const groupMap = new Map<string, string>(
-      ((groupRows ?? []) as GroupRow[]).map(g => [g.id, g.name]),
-    )
-
-    const roleByGroup = new Map<string, GroupRole>()
-    memberRows.forEach(m => {
-      if (!roleByGroup.has(m.group_id)) roleByGroup.set(m.group_id, m.role)
-    })
-
-    groups.value = groupIds
-      .map(id => {
-        const name = groupMap.get(id)
-        const role = roleByGroup.get(id)
-        if (!name || !role) return null
-        return { groupId: id, name, role } as GroupListItem
-      })
-      .filter((v): v is GroupListItem => v !== null)
+    groups.value = rows.map((r) => ({
+      groupId: r.group_id,
+      name: r.name,
+      role: r.role,
+      color: r.color ?? GROUP_COLORS[0],
+    }))
 
     isLoading.value = false
   }
@@ -143,11 +98,14 @@ export const useGroupsStore = defineStore('groups', () => {
     isLoading.value = false
   }
 
-  const createGroup = async (name: string) => {
+  const createGroup = async (name: string, color?: string) => {
     isLoading.value = true
     error.value = null
 
-    const { data, error: e } = await supabase.rpc('create_group', { p_name: name })
+    const { data, error: e } = await supabase.rpc('create_group', {
+      p_name: name,
+      p_color: color ?? GROUP_COLORS[0],
+    })
 
     if (e) {
       error.value = e.message
@@ -226,7 +184,7 @@ export const useGroupsStore = defineStore('groups', () => {
       return false
     }
 
-    groups.value = groups.value.filter(g => g.groupId !== groupId)
+    groups.value = groups.value.filter((g) => g.groupId !== groupId)
     delete membersByGroupId.value[groupId]
 
     isLoading.value = false
@@ -253,20 +211,31 @@ export const useGroupsStore = defineStore('groups', () => {
     return { ok: true as const, data: mapped }
   }
 
-  const renameGroup = async (groupId: string, name: string) => {
-    if (!name) return { ok: false as const, error: 'Name is required' }
+  const updateGroup = async (groupId: string, payload: { name?: string; color?: string }) => {
+    const name = payload.name?.trim()
+    const patch: Record<string, any> = {}
 
-    const { error: e } = await supabase.rpc('rename_group', {
-      p_group_id: groupId,
-      p_name: name,
-    })
+    if (name) patch.name = name
+    if (payload.color) patch.color = payload.color
+
+    if (Object.keys(patch).length === 0) return { ok: true as const }
+
+    const { error: e } = await supabase.from('groups').update(patch).eq('id', groupId)
 
     if (e) return { ok: false as const, error: e.message }
 
-    const g = groups.value.find(x => x.groupId === groupId)
-    if (g) g.name = name
+    const g = groups.value.find((x) => x.groupId === groupId)
+    if (g) {
+      if (name) g.name = name
+      if (payload.color) g.color = payload.color
+    }
 
     return { ok: true as const }
+  }
+
+  const renameGroup = async (groupId: string, name: string) => {
+    if (!name) return { ok: false as const, error: 'Name is required' }
+    return updateGroup(groupId, { name })
   }
 
   const setMemberRole = async (groupId: string, userId: string, role: GroupRole) => {
@@ -280,7 +249,7 @@ export const useGroupsStore = defineStore('groups', () => {
 
     const list = membersByGroupId.value[groupId]
     if (list) {
-      const m = list.find(x => x.userId === userId)
+      const m = list.find((x) => x.userId === userId)
       if (m) m.role = role
     }
 
@@ -314,6 +283,7 @@ export const useGroupsStore = defineStore('groups', () => {
     declineInvite,
     deleteGroup,
     fetchGroupMembers,
+    updateGroup,
     renameGroup,
     setMemberRole,
     transferOwnership,

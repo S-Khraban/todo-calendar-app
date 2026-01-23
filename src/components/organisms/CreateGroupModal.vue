@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { GROUP_COLORS } from '@/constants/groupColors'
+
+type GroupColor = (typeof GROUP_COLORS)[number]
 
 interface Props {
   modelValue: boolean
@@ -10,15 +13,19 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
-  (e: 'submit', name: string): void
+  (e: 'submit', payload: { name: string; color: GroupColor }): void
 }>()
 
 const name = ref('')
+const color = ref<GroupColor>(GROUP_COLORS[0])
 
 watch(
   () => props.modelValue,
   (open) => {
-    if (open) name.value = ''
+    if (open) {
+      name.value = ''
+      color.value = GROUP_COLORS[0]
+    }
   }
 )
 
@@ -33,7 +40,7 @@ const submit = () => {
   if (props.loading) return
   const trimmed = name.value.trim()
   if (!trimmed) return
-  emit('submit', trimmed)
+  emit('submit', { name: trimmed, color: color.value })
 }
 
 const onKeydown = (e: KeyboardEvent) => {
@@ -71,6 +78,23 @@ onBeforeUnmount(() => {
           @keydown.enter.prevent="submit"
         />
       </label>
+
+      <div class="field">
+        <span class="field__label">Color</span>
+
+        <div class="color-presets">
+          <button
+            v-for="c in GROUP_COLORS"
+            :key="c"
+            type="button"
+            class="color-dot"
+            :class="{ 'color-dot--active': color === c }"
+            :style="{ backgroundColor: c }"
+            :disabled="loading"
+            @click="color = c"
+          />
+        </div>
+      </div>
 
       <div class="modal-actions">
         <button type="button" class="btn" :disabled="loading" @click="close">
@@ -117,6 +141,7 @@ onBeforeUnmount(() => {
 .field {
   display: grid;
   gap: 6px;
+  margin-bottom: 10px;
 }
 
 .field__label {
@@ -128,6 +153,30 @@ onBeforeUnmount(() => {
   padding: 10px 12px;
   border: 1px solid #ddd;
   border-radius: 10px;
+}
+
+.color-presets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.color-dot {
+  width: 32px;
+  height: 24px;
+  min-width: 32px;
+  min-height: 24px;
+  padding: 0;
+  display: inline-flex;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.color-dot--active {
+  border-color: #111827;
+  transform: scale(1.05);
 }
 
 .modal-actions {

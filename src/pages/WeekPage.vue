@@ -11,6 +11,7 @@ import DateBadge from '@/components/atoms/DateBadge.vue'
 import WeekMultiDayRow from '@/components/organisms/WeekMultiDayRow.vue'
 import TaskModal from '@/components/organisms/TaskModal.vue'
 import TasksFilters from '@/components/organisms/TasksFilters.vue'
+import { withAlpha } from '@/utils/color'
 
 const tasksStore = useTasksStore()
 const categoriesStore = useCategoriesStore()
@@ -48,8 +49,33 @@ const groupMap = computed<Record<string, string>>(() => {
   return map
 })
 
+const groupColorMap = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const g of groups.value ?? []) {
+    map[g.groupId] = g.color
+  }
+  return map
+})
+
+const getTaskGroupId = (task: Task) => (task as any).groupId ?? (task as any).group_id ?? null
+
+const getTaskGroupColor = (task: Task) => {
+  const groupId = getTaskGroupId(task)
+  if (!groupId) return null
+  return groupColorMap.value[groupId] ?? null
+}
+
+const weekTaskStyle = (task: Task) => {
+  const color = getTaskGroupColor(task)
+  if (!color) return {}
+  return {
+    backgroundColor: withAlpha(color, 0.1),
+    borderColor: color,
+  }
+}
+
 const getBadgeLabel = (task: Task) => {
-  const groupId = (task as any).groupId ?? (task as any).group_id ?? null
+  const groupId = getTaskGroupId(task)
   if (groupId) return groupMap.value[groupId] ?? 'Group'
 
   const id = task.categoryId ?? null
@@ -151,9 +177,7 @@ const onFilteredUpdate = (flat: Task[]) => {
   }))
 }
 
-const colsToRender = computed(() =>
-  filteredByDay.value.length ? filteredByDay.value : baseTasksByDay.value,
-)
+const colsToRender = computed(() => (filteredByDay.value.length ? filteredByDay.value : baseTasksByDay.value))
 
 const isTaskModalOpen = ref(false)
 const editingTask = ref<Task | null>(null)
@@ -206,10 +230,7 @@ const handleSaveTask = async (payload: SavePayload) => {
       </div>
     </div>
 
-    <TasksFilters
-      :tasks="flatTasks"
-      @update:filteredTasks="onFilteredUpdate($event)"
-    />
+    <TasksFilters :tasks="flatTasks" @update:filteredTasks="onFilteredUpdate($event)" />
 
     <div class="pd4u-week-row">
       <div
@@ -235,11 +256,7 @@ const handleSaveTask = async (payload: SavePayload) => {
       </div>
     </div>
 
-    <WeekMultiDayRow
-      :week-start-iso="weekStartIso"
-      :week-end-iso="weekEndIso"
-      :tasks="tasksStore.tasks"
-    />
+    <WeekMultiDayRow :week-start-iso="weekStartIso" :week-end-iso="weekEndIso" :tasks="tasksStore.tasks" />
 
     <div class="pd4u-week-cells">
       <div
@@ -249,15 +266,14 @@ const handleSaveTask = async (payload: SavePayload) => {
         :class="{ 'pd4u-week-cell--today': col.day.iso === todayIso }"
         @click="openDay(col.day.iso)"
       >
-        <div v-if="col.tasks.length === 0" class="pd4u-week-empty">
-          No tasks
-        </div>
+        <div v-if="col.tasks.length === 0" class="pd4u-week-empty">No tasks</div>
 
         <ul v-else class="pd4u-week-tasks">
           <li
             v-for="task in col.tasks"
             :key="task.id"
             class="pd4u-week-task"
+            :style="weekTaskStyle(task)"
             :class="[
               getPriority(task.priority as UIPriority | undefined) === 'high'
                 ? 'pd4u-week-task--high'
@@ -298,12 +314,7 @@ const handleSaveTask = async (payload: SavePayload) => {
       </div>
     </div>
 
-    <TaskModal
-      v-model="isTaskModalOpen"
-      :task="editingTask"
-      :default-date="modalDate"
-      @save="handleSaveTask"
-    />
+    <TaskModal v-model="isTaskModalOpen" :task="editingTask" :default-date="modalDate" @save="handleSaveTask" />
   </div>
 </template>
 
@@ -394,6 +405,7 @@ const handleSaveTask = async (payload: SavePayload) => {
   border-radius: 8px;
   padding: 4px 6px;
   background-color: var(--pd4u-empty-bg, #f9fafb);
+  border: 1px solid transparent;
 }
 
 .pd4u-week-task--high {

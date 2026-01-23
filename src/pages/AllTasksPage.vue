@@ -9,6 +9,7 @@ import Button from '@/components/atoms/Button.vue'
 import TaskModal from '@/components/organisms/TaskModal.vue'
 import TasksFilters from '@/components/organisms/TasksFilters.vue'
 import { toLocalIso, formatIsoShort } from '@/utils/date'
+import { withAlpha } from '@/utils/color'
 
 const tasksStore = useTasksStore()
 const categoriesStore = useCategoriesStore()
@@ -37,8 +38,34 @@ const groupMap = computed<Record<string, string>>(() => {
   return map
 })
 
+const groupColorMap = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const g of groups.value ?? []) {
+    map[g.groupId] = g.color
+  }
+  return map
+})
+
+const getTaskGroupId = (task: Task) =>
+  ((task as any).groupId ?? (task as any).group_id ?? null) as string | null
+
+const getTaskGroupColor = (task: Task) => {
+  const groupId = getTaskGroupId(task)
+  if (!groupId) return null
+  return groupColorMap.value[groupId] ?? null
+}
+
+const taskRowStyle = (task: Task) => {
+  const color = getTaskGroupColor(task)
+  if (!color) return {}
+  return {
+    backgroundColor: withAlpha(color, 0.1),
+    borderColor: color,
+  }
+}
+
 const getBadgeLabel = (task: Task) => {
-  const groupId = ((task as any).groupId ?? (task as any).group_id ?? null) as string | null
+  const groupId = getTaskGroupId(task)
   if (groupId) return groupMap.value[groupId] ?? 'Group'
 
   const categoryId = task.categoryId ?? null
@@ -141,10 +168,7 @@ const handleSaveTask = async (payload: SavePayload) => {
     </div>
 
     <div class="mb-5">
-      <TasksFilters
-        :tasks="baseTasks"
-        @update:filteredTasks="onFilteredUpdate($event)"
-      />
+      <TasksFilters :tasks="baseTasks" @update:filteredTasks="onFilteredUpdate($event)" />
     </div>
 
     <div v-if="filteredTasks.length === 0" class="text-text-muted text-sm">
@@ -155,11 +179,10 @@ const handleSaveTask = async (payload: SavePayload) => {
       <li
         v-for="task in filteredTasks"
         :key="task.id"
-        class="grid grid-cols-[1fr,auto] gap-2 items-start px-3 py-2 rounded-md border border-border-soft bg-app-surface shadow-sm cursor-pointer"
+        class="grid grid-cols-[1fr,auto] gap-2 items-start px-3 py-2 rounded-md border shadow-sm cursor-pointer"
+        :style="taskRowStyle(task)"
         :class="[
-          getPriority(task.priority as UIPriority | undefined) === 'high'
-            ? 'ring-1 ring-amber-400/60 border-amber-300/60'
-            : '',
+          getPriority(task.priority as UIPriority | undefined) === 'high' ? 'ring-1 ring-amber-400/60' : '',
           getPriority(task.priority as UIPriority | undefined) === 'medium' ? 'border-border-soft/80' : '',
         ]"
         @click="startEdit(task)"
@@ -213,11 +236,6 @@ const handleSaveTask = async (payload: SavePayload) => {
       </li>
     </ul>
 
-    <TaskModal
-      v-model="isTaskModalOpen"
-      :task="editingTask"
-      :default-date="modalDate"
-      @save="handleSaveTask"
-    />
+    <TaskModal v-model="isTaskModalOpen" :task="editingTask" :default-date="modalDate" @save="handleSaveTask" />
   </div>
 </template>

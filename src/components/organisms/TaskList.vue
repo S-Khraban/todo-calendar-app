@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import TaskItem from '@/components/molecules/TaskItem.vue'
+import { useGroupsStore } from '@/stores/groups'
+import { withAlpha } from '@/utils/color'
 
 type TaskPriority = 'low' | 'medium' | 'high'
 
@@ -11,6 +14,7 @@ type TaskItemData = {
   isCompleted: boolean
   isToday?: boolean
   priority?: TaskPriority
+  groupId?: string | null
 }
 
 const props = defineProps<{
@@ -23,6 +27,24 @@ const emit = defineEmits<{
   (e: 'edit', id: string | number): void
   (e: 'delete', id: string | number): void
 }>()
+
+const groupsStore = useGroupsStore()
+
+const groupColorById = computed(() => {
+  const m = new Map<string, string>()
+  groupsStore.groups.forEach((g) => m.set(g.groupId, g.color))
+  return m
+})
+
+const getGroupColor = (groupId?: string | null) => {
+  if (!groupId) return null
+  return groupColorById.value.get(groupId) ?? null
+}
+
+const getGroupBg = (groupId?: string | null) => {
+  const c = getGroupColor(groupId)
+  return c ? withAlpha(c, 0.1) : null
+}
 
 const handleToggle = (payload: { id: string | number; value: boolean }) => {
   emit('toggleCompleted', payload)
@@ -39,28 +61,33 @@ const handleDelete = (id: string | number) => {
 
 <template>
   <div class="pd4u-task-list">
-    <div
-      v-if="!props.tasks.length"
-      class="pd4u-task-list__empty"
-    >
+    <div v-if="!props.tasks.length" class="pd4u-task-list__empty">
       {{ props.emptyLabel || 'No tasks yet' }}
     </div>
 
     <div v-else class="pd4u-task-list__items">
-      <TaskItem
+      <div
         v-for="task in props.tasks"
         :key="task.id"
-        :id="task.id"
-        :title="task.title"
-        :start-date="task.startDate"
-        :end-date="task.endDate"
-        :is-completed="task.isCompleted"
-        :is-today="task.isToday"
-        :priority="task.priority"
-        @toggle-completed="handleToggle"
-        @edit="handleEdit"
-        @delete="handleDelete"
-      />
+        class="pd4u-task-list__row"
+        :style="{
+          '--group-bg': getGroupBg(task.groupId) || '',
+          '--group-accent': getGroupColor(task.groupId) || '',
+        }"
+      >
+        <TaskItem
+          :id="task.id"
+          :title="task.title"
+          :start-date="task.startDate"
+          :end-date="task.endDate"
+          :is-completed="task.isCompleted"
+          :is-today="task.isToday"
+          :priority="task.priority"
+          @toggle-completed="handleToggle"
+          @edit="handleEdit"
+          @delete="handleDelete"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -76,6 +103,11 @@ const handleDelete = (id: string | number) => {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.pd4u-task-list__row {
+  border-radius: 10px;
+  overflow: hidden;
 }
 
 .pd4u-task-list__empty {

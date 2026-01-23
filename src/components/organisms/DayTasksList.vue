@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Task } from '@/types'
+import { storeToRefs } from 'pinia'
+import { useGroupsStore } from '@/stores/groups'
+import { withAlpha } from '@/utils/color'
 
 const { dateLabel, tasks, categoryMap, getBadgeLabel } = defineProps<{
   dateLabel: string
@@ -14,6 +17,34 @@ const emit = defineEmits<{
   (e: 'edit', task: Task): void
   (e: 'toggle-status', id: string): void
 }>()
+
+const groupsStore = useGroupsStore()
+const { groups } = storeToRefs(groupsStore)
+
+const groupColorMap = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const g of groups.value ?? []) {
+    map[g.groupId] = g.color
+  }
+  return map
+})
+
+const getTaskGroupId = (task: Task) => (task as any).groupId ?? (task as any).group_id ?? null
+
+const getTaskGroupColor = (task: Task) => {
+  const groupId = getTaskGroupId(task)
+  if (!groupId) return null
+  return groupColorMap.value[groupId] ?? null
+}
+
+const taskRowStyle = (task: Task) => {
+  const color = getTaskGroupColor(task)
+  if (!color) return {}
+  return {
+    backgroundColor: withAlpha(color, 0.1),
+    borderColor: color,
+  }
+}
 
 const handleToggle = (id: string) => {
   emit('toggle-status', id)
@@ -76,9 +107,10 @@ const getLabel = (task: Task) => {
       <li
         v-for="task in sortedTasks"
         :key="task.id"
-        class="flex items-center gap-3 px-3 py-2 rounded-md border border-border-soft bg-app-surface shadow-sm cursor-pointer"
+        class="flex items-center gap-3 px-3 py-2 rounded-md border shadow-sm cursor-pointer"
+        :style="taskRowStyle(task)"
         :class="[
-          getPriority(task.priority) === 'high' ? 'ring-1 ring-amber-400/60 border-amber-300/60' : '',
+          getPriority(task.priority) === 'high' ? 'ring-1 ring-amber-400/60' : '',
           getPriority(task.priority) === 'medium' ? 'border-border-soft/80' : '',
         ]"
         @click="handleEdit(task)"

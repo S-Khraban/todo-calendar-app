@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
-import { useGroupsStore } from '@/stores/groups'
+import { storeToRefs } from 'pinia'
+import { useGroupsStore, type GroupRole } from '@/stores/groups'
 import CreateGroupModal from '@/components/organisms/CreateGroupModal.vue'
 import InviteMemberModal from '@/components/organisms/InviteMemberModal.vue'
 import DeleteGroupModal from '@/components/organisms/DeleteGroupModal.vue'
 import GroupSettingsModal from '@/components/organisms/GroupSettingsModal.vue'
+import { GROUP_COLORS } from '@/constants/groupColors'
+import { withAlpha } from '@/utils/color'
+
+type GroupColor = (typeof GROUP_COLORS)[number]
 
 const groupsStore = useGroupsStore()
+const { groups, invites, isLoading, error } = storeToRefs(groupsStore)
 
 const isCreateOpen = ref(false)
 const isInviteOpen = ref(false)
@@ -14,38 +20,38 @@ const isDeleteOpen = ref(false)
 const isSettingsOpen = ref(false)
 
 const activeInviteGroupId = ref<string | null>(null)
-const activeInviteGroupName = ref<string>('')
-
+const activeInviteGroupName = ref('')
 const lastInviteToken = ref<string | null>(null)
 
 const activeDeleteGroupId = ref<string | null>(null)
-const activeDeleteGroupName = ref<string>('')
+const activeDeleteGroupName = ref('')
 
 const activeSettingsGroupId = ref<string | null>(null)
-const activeSettingsGroupName = ref<string>('')
-const activeSettingsMyRole = ref<'owner' | 'admin' | 'member'>('member')
+const activeSettingsGroupName = ref('')
+const activeSettingsGroupColor = ref<GroupColor>(GROUP_COLORS[0])
+const activeSettingsMyRole = ref<GroupRole>('member')
 
 onMounted(() => {
   groupsStore.fetchMyGroups()
   groupsStore.fetchInvites()
 })
 
-const roleLabel = (role: string) => {
-  if (role === 'owner') return 'Owner'
-  if (role === 'admin') return 'Admin'
-  return 'Member'
-}
+const roleLabel = (role: GroupRole) =>
+  role === 'owner' ? 'Owner' : role === 'admin' ? 'Admin' : 'Member'
 
-const canInvite = (role: string) => role === 'owner' || role === 'admin'
-const canDelete = (role: string) => role === 'owner'
-const canManage = (role: string) => role === 'owner' || role === 'admin'
+const canInvite = (role: GroupRole) => role === 'owner' || role === 'admin'
+const canDelete = (role: GroupRole) => role === 'owner'
+const canManage = (role: GroupRole) => role === 'owner' || role === 'admin'
 
-const openCreate = () => {
-  isCreateOpen.value = true
-}
+const groupStyle = (color: string) => ({
+  backgroundColor: withAlpha(color, 0.1),
+  borderColor: color,
+})
 
-const handleCreateSubmit = async (name: string) => {
-  const id = await groupsStore.createGroup(name)
+const openCreate = () => (isCreateOpen.value = true)
+
+const handleCreateSubmit = async (payload: { name: string; color: GroupColor }) => {
+  const id = await groupsStore.createGroup(payload.name, payload.color)
   if (id) isCreateOpen.value = false
 }
 
@@ -56,10 +62,9 @@ const openInvite = (groupId: string, groupName: string) => {
   isInviteOpen.value = true
 }
 
-const inviteLink = computed(() => {
-  if (!lastInviteToken.value) return null
-  return `${window.location.origin}/invite/${lastInviteToken.value}`
-})
+const inviteLink = computed(() =>
+  lastInviteToken.value ? `${window.location.origin}/invite/${lastInviteToken.value}` : null
+)
 
 const handleInviteSubmit = async (email: string) => {
   if (!activeInviteGroupId.value) return
@@ -83,9 +88,10 @@ const confirmDelete = async () => {
   }
 }
 
-const openSettings = (groupId: string, groupName: string, myRole: 'owner' | 'admin' | 'member') => {
+const openSettings = (groupId: string, groupName: string, myRole: GroupRole, groupColor: GroupColor) => {
   activeSettingsGroupId.value = groupId
   activeSettingsGroupName.value = groupName
+  activeSettingsGroupColor.value = groupColor
   activeSettingsMyRole.value = myRole
   isSettingsOpen.value = true
 }
@@ -98,59 +104,38 @@ const declineInvite = async (token: string) => {
   await groupsStore.declineInvite(token)
 }
 
-const inviteSubtitle = (inv: any) => {
-  const by = inv.inviterEmail ? `Invited by ${inv.inviterEmail}` : 'Invited by Unknown'
-  const status = 'Pending'
-  return `${by} • ${status}`
-}
+const inviteSubtitle = (inv: any) =>
+  `${inv.inviterEmail ? `Invited by ${inv.inviterEmail}` : 'Invited by Unknown'} • Pending`
 </script>
 
 <template>
   <section>
     <header class="groups-header">
       <h2 class="groups-title">Groups</h2>
-      <button
-        type="button"
-        class="btn"
-        :disabled="groupsStore.isLoading"
-        @click="openCreate"
-      >
+      <button type="button" class="btn" :disabled="isLoading" @click="openCreate">
         Create group
       </button>
     </header>
 
-    <p v-if="groupsStore.isLoading">Loading...</p>
-    <p v-else-if="groupsStore.error" class="error">
-      {{ groupsStore.error }}
-    </p>
+    <p v-if="isLoading">Loading...</p>
+    <p v-else-if="error" class="error">{{ error }}</p>
 
     <div v-else>
-      <div v-if="groupsStore.invites.length" class="invites">
-        <h3 class="invites-title">Invites ({{ groupsStore.invites.length }})</h3>
+      <div v-if="invites.length" class="invites">
+        <h3 class="invites-title">Invites ({{ invites.length }})</h3>
 
         <ul class="invites-list">
-          <li v-for="inv in groupsStore.invites" :key="inv.id" class="invite-item">
+          <li v-for="inv in invites" :key="inv.id" class="invite-item">
             <div>
               <div class="invite-name">{{ inv.groupName }}</div>
               <div class="invite-meta">{{ inviteSubtitle(inv) }}</div>
             </div>
 
             <div class="actions">
-              <button
-                type="button"
-                class="btn"
-                :disabled="groupsStore.isLoading"
-                @click="declineInvite(inv.token)"
-              >
+              <button type="button" class="btn" :disabled="isLoading" @click="declineInvite(inv.token)">
                 Decline
               </button>
-
-              <button
-                type="button"
-                class="btn"
-                :disabled="groupsStore.isLoading"
-                @click="acceptInvite(inv.token)"
-              >
+              <button type="button" class="btn" :disabled="isLoading" @click="acceptInvite(inv.token)">
                 Accept
               </button>
             </div>
@@ -158,15 +143,23 @@ const inviteSubtitle = (inv: any) => {
         </ul>
       </div>
 
-      <div v-if="groupsStore.groups.length === 0" class="empty">
+      <div v-if="groups.length === 0" class="empty">
         You are not a member of any group yet.
       </div>
 
       <ul v-else class="groups-list">
-        <li v-for="g in groupsStore.groups" :key="g.groupId" class="group-item">
-          <div>
-            <div class="group-name">{{ g.name }}</div>
-            <div class="group-role">{{ roleLabel(g.role) }}</div>
+        <li
+          v-for="g in groups"
+          :key="g.groupId"
+          class="group-item"
+          :style="groupStyle(g.color)"
+        >
+          <div class="group-left">
+            <div class="group-color" :style="{ backgroundColor: g.color }" />
+            <div>
+              <div class="group-name">{{ g.name }}</div>
+              <div class="group-role">{{ roleLabel(g.role) }}</div>
+            </div>
           </div>
 
           <div class="actions">
@@ -174,8 +167,8 @@ const inviteSubtitle = (inv: any) => {
               v-if="canManage(g.role)"
               type="button"
               class="btn"
-              :disabled="groupsStore.isLoading"
-              @click="openSettings(g.groupId, g.name, g.role)"
+              :disabled="isLoading"
+              @click="openSettings(g.groupId, g.name, g.role, g.color as GroupColor)"
             >
               Settings
             </button>
@@ -183,8 +176,7 @@ const inviteSubtitle = (inv: any) => {
             <button
               type="button"
               class="btn"
-              :disabled="groupsStore.isLoading || !canInvite(g.role)"
-              :title="canInvite(g.role) ? 'Invite member' : 'Only owner/admin can invite'"
+              :disabled="isLoading || !canInvite(g.role)"
               @click="openInvite(g.groupId, g.name)"
             >
               Invite
@@ -194,7 +186,7 @@ const inviteSubtitle = (inv: any) => {
               v-if="canDelete(g.role)"
               type="button"
               class="btn btn-danger"
-              :disabled="groupsStore.isLoading"
+              :disabled="isLoading"
               @click="openDelete(g.groupId, g.name)"
             >
               Delete
@@ -204,33 +196,27 @@ const inviteSubtitle = (inv: any) => {
       </ul>
     </div>
 
-    <CreateGroupModal
-      v-model="isCreateOpen"
-      :loading="groupsStore.isLoading"
-      @submit="handleCreateSubmit"
-    />
-
+    <CreateGroupModal v-model="isCreateOpen" :loading="isLoading" @submit="handleCreateSubmit" />
     <InviteMemberModal
       v-model="isInviteOpen"
-      :loading="groupsStore.isLoading"
+      :loading="isLoading"
       :group-name="activeInviteGroupName"
       :invite-link="inviteLink"
       @submit="handleInviteSubmit"
     />
-
     <DeleteGroupModal
       v-model="isDeleteOpen"
-      :loading="groupsStore.isLoading"
+      :loading="isLoading"
       :group-name="activeDeleteGroupName"
       @confirm="confirmDelete"
     />
-
     <GroupSettingsModal
       v-model="isSettingsOpen"
       :group-id="activeSettingsGroupId"
       :group-name="activeSettingsGroupName"
+      :group-color="activeSettingsGroupColor"
       :my-role="activeSettingsMyRole"
-      :loading="groupsStore.isLoading"
+      :loading="isLoading"
       @updated="groupsStore.fetchMyGroups()"
     />
   </section>
@@ -244,46 +230,7 @@ const inviteSubtitle = (inv: any) => {
   gap: 12px;
 }
 
-.groups-title {
-  margin: 0;
-}
-
-.invites {
-  margin-top: 12px;
-}
-
-.invites-title {
-  margin: 0 0 8px;
-  font-size: 14px;
-  opacity: 0.9;
-}
-
-.invites-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 12px;
-  display: grid;
-  gap: 10px;
-}
-
-.invite-item {
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  padding: 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.invite-name {
-  font-weight: 600;
-}
-
-.invite-meta {
-  opacity: 0.7;
-  font-size: 12px;
-}
-
+.invites-list,
 .groups-list {
   list-style: none;
   padding: 0;
@@ -292,6 +239,7 @@ const inviteSubtitle = (inv: any) => {
   gap: 10px;
 }
 
+.invite-item,
 .group-item {
   border: 1px solid #ddd;
   border-radius: 10px;
@@ -301,13 +249,17 @@ const inviteSubtitle = (inv: any) => {
   align-items: center;
 }
 
-.group-name {
-  font-weight: 600;
+.group-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.group-role {
-  opacity: 0.7;
-  font-size: 12px;
+.group-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
 }
 
 .actions {
