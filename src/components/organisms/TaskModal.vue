@@ -71,7 +71,6 @@ const form = reactive({
 })
 
 const isEdit = computed(() => !!props.task)
-
 const isLocked = ref(false)
 
 const selectedGroup = computed(() => myGroups.value.find(g => g.id === form.groupId) ?? null)
@@ -261,6 +260,22 @@ const onSubmit = () => {
     @update:model-value="setOpen"
     @close="close"
   >
+    <template #header-actions>
+      <button type="button" class="tm-hbtn" @click="close">
+        Cancel
+      </button>
+
+      <button
+        v-if="isEdit"
+        type="button"
+        class="tm-hbtn tm-hbtn--edit"
+        :aria-pressed="!isLocked"
+        @click="toggleEdit"
+      >
+        📝 Edit
+      </button>
+    </template>
+
     <div class="tm-scroll">
       <form class="tm-form" @submit.prevent="onSubmit">
         <div class="tm-field">
@@ -366,10 +381,6 @@ const onSubmit = () => {
         </div>
 
         <div class="tm-footer">
-          <BaseButton v-if="isEdit" variant="ghost" type="button" class="tm-edit-btn" @click="toggleEdit">
-            🖋️ <span>Edit</span>
-          </BaseButton>
-
           <BaseButton variant="ghost" type="button" @click="close">Cancel</BaseButton>
 
           <BaseButton v-if="!isLocked" variant="solid" type="submit">
@@ -391,12 +402,12 @@ const onSubmit = () => {
 .tm-form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .tm-row {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .tm-row--1 {
@@ -414,12 +425,12 @@ const onSubmit = () => {
 .tm-field {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  font-size: 12px;
+  gap: 4px;
+  font-size: 13px;
 }
 
 .tm-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-muted, #6b7280);
 }
@@ -427,10 +438,10 @@ const onSubmit = () => {
 .tm-textarea {
   width: 100%;
   resize: vertical;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-radius: 6px;
   border: 1px solid var(--border-soft, #e5e7eb);
-  font-size: 12px;
+  font-size: 13px;
   font-family: inherit;
   background: #fff;
   box-sizing: border-box;
@@ -445,11 +456,11 @@ const onSubmit = () => {
 
 .tm-native {
   width: 100%;
-  height: 34px;
-  padding: 0 10px;
+  height: 40px;
+  padding: 0 12px;
   border-radius: 6px;
   border: 1px solid var(--border-soft, #e5e7eb);
-  font-size: 12px;
+  font-size: 13px;
   font-family: inherit;
   background: #fff;
   box-sizing: border-box;
@@ -463,25 +474,38 @@ const onSubmit = () => {
 }
 
 .tm-footer {
-  margin-top: 4px;
+  margin-top: 6px;
   display: flex;
   justify-content: flex-end;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
 }
 
-.tm-edit-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.tm-hbtn {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-soft, #e5e7eb);
+  background: #fff;
   font-size: 12px;
-  color: var(--text-muted, #6b7280);
-  padding-left: 8px;
-  padding-right: 8px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
 }
 
-.tm-edit-btn:hover {
+.tm-hbtn:hover {
   color: var(--brand-primary, #2563eb);
+  border-color: rgba(37, 99, 235, 0.45);
+}
+
+.tm-hbtn:focus {
+  outline: none;
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.tm-hbtn--edit {
+  font-weight: 600;
 }
 
 @media (max-width: 900px) {

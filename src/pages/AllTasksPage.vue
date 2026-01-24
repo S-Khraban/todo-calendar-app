@@ -155,6 +155,25 @@ const handleSaveTask = async (payload: SavePayload) => {
 
   await tasksStore.addTask(payload as any)
 }
+
+const isDeleteModalOpen = ref(false)
+const deleteTaskId = ref<string | number | null>(null)
+
+const openDeleteConfirm = (id: string | number) => {
+  deleteTaskId.value = id
+  isDeleteModalOpen.value = true
+}
+
+const closeDeleteConfirm = () => {
+  isDeleteModalOpen.value = false
+  deleteTaskId.value = null
+}
+
+const confirmDelete = async () => {
+  if (deleteTaskId.value == null) return
+  await tasksStore.removeTask(deleteTaskId.value as any)
+  closeDeleteConfirm()
+}
 </script>
 
 <template>
@@ -230,7 +249,7 @@ const handleSaveTask = async (payload: SavePayload) => {
             size="sm"
             variant="ghost"
             class="border-none bg-transparent text-[11px] text-rose-500 hover:text-rose-400 cursor-pointer px-0 py-0 h-auto leading-4"
-            @click.stop="tasksStore.removeTask(task.id)"
+            @click.stop="openDeleteConfirm(task.id)"
           >
             Delete
           </Button>
@@ -239,5 +258,32 @@ const handleSaveTask = async (payload: SavePayload) => {
     </ul>
 
     <TaskModal v-model="isTaskModalOpen" :task="editingTask" :default-date="modalDate" @save="handleSaveTask" />
+
+    <teleport to="body">
+      <div
+        v-if="isDeleteModalOpen"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+        @click="closeDeleteConfirm"
+      >
+        <div class="w-full max-w-[360px] rounded-xl border border-border-soft bg-app-bg p-4 shadow-lg" @click.stop>
+          <div class="text-sm font-semibold text-text-primary mb-2">
+            Delete this task?
+          </div>
+
+          <div class="text-sm text-text-muted mb-4">
+            This action cannot be undone.
+          </div>
+
+          <div class="flex justify-end gap-2">
+            <Button type="button" size="sm" variant="ghost" @click="closeDeleteConfirm">
+              No
+            </Button>
+            <Button type="button" size="sm" variant="primary" @click="confirmDelete">
+              Yes
+            </Button>
+          </div>
+        </div>
+      </div>
+    </teleport>
   </div>
 </template>

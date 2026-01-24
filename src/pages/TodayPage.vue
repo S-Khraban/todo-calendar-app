@@ -208,15 +208,15 @@ const toggleStatus = (task: Task) => {
       @update:filteredTasks="filteredTasks = $event"
     />
 
-    <section class="mb-6 flex flex-wrap items-center gap-3">
-      <button
-        type="button"
-        class="px-4 py-2 rounded-md bg-brand-primary text-white text-sm cursor-pointer"
-        @click="openCreate"
-      >
-        Add task
-      </button>
-    </section>
+<section class="mb-6 flex flex-wrap items-center justify-center gap-3">
+  <button
+    type="button"
+    class="px-4 py-2 rounded-md bg-brand-primary text-white text-sm cursor-pointer"
+    @click="openCreate"
+  >
+    Add task
+  </button>
+</section>
 
     <section>
       <div v-if="filteredTasks.length === 0" class="text-sm text-text-muted">
