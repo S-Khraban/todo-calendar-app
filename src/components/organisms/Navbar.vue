@@ -14,7 +14,7 @@
             class="pd4u-navbar__link"
             :class="{ 'pd4u-navbar__link--active': isActive(link.to) }"
           >
-            {{ link.label }}
+            {{ t(link.labelKey) }}
           </RouterLink>
         </div>
 
@@ -30,7 +30,7 @@
             <img
               v-if="avatarUrl"
               :src="avatarUrl"
-              alt="User avatar"
+              :alt="t('navbar.avatarAlt')"
               class="pd4u-auth-avatar"
               referrerpolicy="no-referrer"
             />
@@ -50,18 +50,20 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import AuthPopover from '@/components/molecules/AuthPopover.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import { supabase } from '@/services/supabaseClient'
 
 const route = useRoute()
+const { t } = useI18n()
 
 const links = [
-  { to: '/date', label: 'Today' },
-  { to: '/week', label: 'Week' },
-  { to: '/calendar', label: 'Calendar' },
-  { to: '/tasks', label: 'All Tasks' },
-]
+  { to: '/date', labelKey: 'navbar.links.today' },
+  { to: '/week', labelKey: 'navbar.links.week' },
+  { to: '/calendar', labelKey: 'navbar.links.calendar' },
+  { to: '/tasks', labelKey: 'navbar.links.allTasks' },
+] as const
 
 const toLocalIso = (d: Date) => {
   const y = d.getFullYear()
@@ -78,7 +80,6 @@ const isActive = (to: string) => {
     if (route.name === 'date' && route.params.date === todayIso) return true
     return false
   }
-
   return route.path === to
 }
 
@@ -94,15 +95,12 @@ const closeAuth = () => {
 
 const avatarUrl = ref<string>('')
 
-const pickAvatarFromUser = (user: any) => {
-  return (
-    user?.user_metadata?.avatar_url ||
-    user?.user_metadata?.picture ||
-    user?.identities?.[0]?.identity_data?.avatar_url ||
-    user?.identities?.[0]?.identity_data?.picture ||
-    ''
-  )
-}
+const pickAvatarFromUser = (user: any) =>
+  user?.user_metadata?.avatar_url ||
+  user?.user_metadata?.picture ||
+  user?.identities?.[0]?.identity_data?.avatar_url ||
+  user?.identities?.[0]?.identity_data?.picture ||
+  ''
 
 const syncAvatar = async () => {
   const { data } = await supabase.auth.getUser()

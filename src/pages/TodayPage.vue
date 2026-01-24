@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useTasksStore } from '@/stores/tasks'
 import { useCategoriesStore } from '@/stores/categories'
 import { useGroupsStore } from '@/stores/groups'
@@ -11,6 +12,8 @@ import TasksFilters from '@/components/organisms/TasksFilters.vue'
 import { toLocalIso, formatFullDateUA } from '@/utils/date'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import { withAlpha } from '@/utils/color'
+
+const { t } = useI18n()
 
 const tasksStore = useTasksStore()
 const categoriesStore = useCategoriesStore()
@@ -73,10 +76,10 @@ const taskRowStyle = (task: Task) => {
 
 const getBadgeLabel = (task: Task) => {
   const groupId = getTaskGroupId(task)
-  if (groupId) return groupMap.value[groupId] ?? 'Group'
+  if (groupId) return groupMap.value[groupId] ?? t('common.group')
   const id = task.categoryId ?? null
-  if (!id) return '—'
-  return categoryMap.value[id] ?? '—'
+  if (!id) return t('common.none')
+  return categoryMap.value[id] ?? t('common.none')
 }
 
 const todayIso = toLocalIso(new Date())
@@ -188,18 +191,18 @@ const toggleStatus = (task: Task) => {
     <header class="mb-4 space-y-2">
       <div class="flex items-center justify-between gap-3">
         <h1 class="text-xl font-semibold text-text-primary">
-          Tasks for {{ currentDateLabel }}
+          {{ t('day.title', { date: currentDateLabel }) }}
         </h1>
 
         <div class="flex items-center gap-2 shrink-0">
-          <BaseButton size="sm" variant="outline" @click="goPrevDay">← Prev</BaseButton>
-          <BaseButton size="sm" variant="outline" @click="goToToday">Today</BaseButton>
-          <BaseButton size="sm" variant="outline" @click="goNextDay">Next →</BaseButton>
+          <BaseButton size="sm" variant="outline" @click="goPrevDay">{{ t('day.actions.prev') }}</BaseButton>
+          <BaseButton size="sm" variant="outline" @click="goToToday">{{ t('day.actions.today') }}</BaseButton>
+          <BaseButton size="sm" variant="outline" @click="goNextDay">{{ t('day.actions.next') }}</BaseButton>
         </div>
       </div>
 
       <p class="text-sm text-text-muted">
-        {{ hasTasks ? 'Here are your tasks for this day.' : 'No tasks yet, add one below.' }}
+        {{ hasTasks ? t('day.hint.hasTasks') : t('day.hint.empty') }}
       </p>
     </header>
 
@@ -208,19 +211,19 @@ const toggleStatus = (task: Task) => {
       @update:filteredTasks="filteredTasks = $event"
     />
 
-<section class="mb-6 flex flex-wrap items-center justify-center gap-3">
-  <button
-    type="button"
-    class="px-4 py-2 rounded-md bg-brand-primary text-white text-sm cursor-pointer"
-    @click="openCreate"
-  >
-    Add task
-  </button>
-</section>
+    <section class="mb-6 flex flex-wrap items-center justify-center gap-3">
+      <button
+        type="button"
+        class="px-4 py-2 rounded-md bg-brand-primary text-white text-sm cursor-pointer"
+        @click="openCreate"
+      >
+        {{ t('day.actions.addTask') }}
+      </button>
+    </section>
 
     <section>
       <div v-if="filteredTasks.length === 0" class="text-sm text-text-muted">
-        No tasks for this day.
+        {{ t('day.empty') }}
       </div>
 
       <ul v-else class="flex flex-col gap-2 text-sm">
@@ -265,9 +268,9 @@ const toggleStatus = (task: Task) => {
 
             <div class="text-xs text-text-muted mt-0.5">
               <span v-if="task.startTime || task.endTime">
-                {{ task.startTime || '??:??' }} – {{ task.endTime || '...' }}
+                {{ task.startTime || t('common.unknownTime') }} – {{ task.endTime || t('common.ellipsis') }}
               </span>
-              <span v-else>No time</span>
+              <span v-else>{{ t('common.noTime') }}</span>
             </div>
           </div>
 
@@ -276,7 +279,7 @@ const toggleStatus = (task: Task) => {
           </span>
 
           <button type="button" class="text-xs text-brand-primary" @click="openEdit(task)">
-            Edit
+            {{ t('common.edit') }}
           </button>
         </li>
       </ul>

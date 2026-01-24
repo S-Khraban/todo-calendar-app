@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import TaskItem from '@/components/molecules/TaskItem.vue'
 import { useGroupsStore } from '@/stores/groups'
 import { withAlpha } from '@/utils/color'
@@ -27,6 +28,8 @@ const emit = defineEmits<{
   (e: 'edit', id: string | number): void
   (e: 'delete', id: string | number): void
 }>()
+
+const { t } = useI18n()
 
 const groupsStore = useGroupsStore()
 
@@ -62,7 +65,7 @@ const handleDelete = (id: string | number) => {
 <template>
   <div class="pd4u-task-list">
     <div v-if="!props.tasks.length" class="pd4u-task-list__empty">
-      {{ props.emptyLabel || 'No tasks yet' }}
+      {{ props.emptyLabel || t('tasks.empty') }}
     </div>
 
     <div v-else class="pd4u-task-list__items">

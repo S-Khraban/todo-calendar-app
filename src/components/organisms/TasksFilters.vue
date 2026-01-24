@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { useCategoriesStore } from '@/stores/categories'
 import { useGroupsStore } from '@/stores/groups'
 import type { Task, TaskStatus } from '@/types'
 
 type ScopeFilter = 'all' | 'group' | 'personal'
 type StatusFilter = TaskStatus | 'all' | 'overdue'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   tasks: Task[]
@@ -28,7 +31,10 @@ const { visibleCategories } = storeToRefs(categoriesStore)
 const { groups } = storeToRefs(groupsStore)
 
 onMounted(async () => {
-  await Promise.all([categoriesStore.fetchCategories(), groupsStore.fetchMyGroups()])
+  await Promise.all([
+    categoriesStore.fetchCategories(),
+    groupsStore.fetchMyGroups(),
+  ])
 })
 
 const scope = ref<ScopeFilter>('all')
@@ -37,9 +43,13 @@ const groupId = ref<string>('all')
 const categoryId = ref<string>('all')
 
 const categoryOptions = computed(() => visibleCategories.value ?? [])
-const groupOptions = computed(() => (groups.value ?? []).map(g => ({ id: g.groupId, name: g.name })))
+const groupOptions = computed(() =>
+  (groups.value ?? []).map(g => ({ id: g.groupId, name: g.name })),
+)
 
-const getTaskGroupId = (t: Task) => ((t as any).groupId ?? (t as any).group_id ?? null) as string | null
+const getTaskGroupId = (t: Task) =>
+  ((t as any).groupId ?? (t as any).group_id ?? null) as string | null
+
 const isGroupTask = (t: Task) => !!getTaskGroupId(t)
 
 const toIsoDay = (d: Date) => {
@@ -115,39 +125,39 @@ const resetFilters = () => {
 <template>
   <div class="flex flex-wrap items-center gap-3 mb-4 text-sm">
     <label class="flex items-center gap-2">
-      <span class="text-text-muted">Status:</span>
+      <span class="text-text-muted">{{ t('filters.status.label') }}</span>
       <select
         v-model="status"
         class="px-2 py-1 rounded-md border border-border-soft bg-white text-text-primary"
       >
-        <option value="all">All</option>
-        <option value="todo">Planned</option>
-        <option value="in_progress">In progress</option>
-        <option value="done">Done</option>
-        <option value="overdue">Overdue</option>
+        <option value="all">{{ t('filters.status.all') }}</option>
+        <option value="todo">{{ t('filters.status.todo') }}</option>
+        <option value="in_progress">{{ t('filters.status.inProgress') }}</option>
+        <option value="done">{{ t('filters.status.done') }}</option>
+        <option value="overdue">{{ t('filters.status.overdue') }}</option>
       </select>
     </label>
 
     <label class="flex items-center gap-2">
-      <span class="text-text-muted">Type:</span>
+      <span class="text-text-muted">{{ t('filters.scope.label') }}</span>
       <select
         v-model="scope"
         class="px-2 py-1 rounded-md border border-border-soft bg-white text-text-primary"
       >
-        <option value="all">All</option>
-        <option value="group">Group</option>
-        <option value="personal">Personal</option>
+        <option value="all">{{ t('filters.scope.all') }}</option>
+        <option value="group">{{ t('filters.scope.group') }}</option>
+        <option value="personal">{{ t('filters.scope.personal') }}</option>
       </select>
     </label>
 
     <label v-if="scope === 'group'" class="flex items-center gap-2">
-      <span class="text-text-muted">Group:</span>
+      <span class="text-text-muted">{{ t('filters.group.label') }}</span>
       <select
         v-model="groupId"
         class="px-2 py-1 rounded-md border border-border-soft bg-white text-text-primary"
         :disabled="groupOptions.length === 0"
       >
-        <option value="all">All groups</option>
+        <option value="all">{{ t('filters.group.all') }}</option>
         <option v-for="g in groupOptions" :key="g.id" :value="g.id">
           {{ g.name }}
         </option>
@@ -155,13 +165,13 @@ const resetFilters = () => {
     </label>
 
     <label v-if="scope === 'personal'" class="flex items-center gap-2">
-      <span class="text-text-muted">Category:</span>
+      <span class="text-text-muted">{{ t('filters.category.label') }}</span>
       <select
         v-model="categoryId"
         class="px-2 py-1 rounded-md border border-border-soft bg-white text-text-primary"
         :disabled="categoryOptions.length === 0"
       >
-        <option value="all">All categories</option>
+        <option value="all">{{ t('filters.category.all') }}</option>
         <option v-for="c in categoryOptions" :key="c.id" :value="c.id">
           {{ c.name }}
         </option>
@@ -173,7 +183,7 @@ const resetFilters = () => {
       class="px-3 py-1.5 rounded-md border border-border-soft bg-white text-text-primary hover:bg-app-surfaceSoft"
       @click="resetFilters"
     >
-      🔄 Reset filters
+      {{ t('filters.reset') }}
     </button>
   </div>
 </template>

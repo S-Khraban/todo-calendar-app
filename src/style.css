@@ -55,7 +55,6 @@
 
   --pd4u-app-bg: #f3f4f6;
 
-  /* Layout tokens */
   --pd4u-max-width: 1400px;
   --pd4u-min-width: 320px;
 
@@ -97,8 +96,6 @@ body {
   min-height: 100vh;
 }
 
-/* базова типографіка й лінки */
-
 a {
   color: inherit;
   text-decoration: none;
@@ -107,8 +104,6 @@ a {
 button {
   font-family: inherit;
 }
-
-/* контейнер сторінки (можеш використовувати як utility-клас додатково до app-shell, якщо треба) */
 
 .pd4u-container {
   width: 100%;
@@ -130,19 +125,15 @@ button {
   }
 }
 
-/* грід-система */
-
 .pd4u-grid {
   display: grid;
   gap: var(--pd4u-grid-gap);
 }
 
-/* 1 колонка завжди */
 .pd4u-grid--1 {
   grid-template-columns: 1fr;
 }
 
-/* 2 колонки: мобілка 1, з tablet — 2 */
 .pd4u-grid--2 {
   grid-template-columns: 1fr;
 }
@@ -153,7 +144,6 @@ button {
   }
 }
 
-/* 3 колонки: мобілка 1, tablet — 2, desktop — 3 */
 .pd4u-grid--3 {
   grid-template-columns: 1fr;
 }

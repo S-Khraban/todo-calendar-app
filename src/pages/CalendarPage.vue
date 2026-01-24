@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { useTasksStore } from '@/stores/tasks'
 import { useCategoriesStore } from '@/stores/categories'
 import { useGroupsStore } from '@/stores/groups'
@@ -10,6 +11,8 @@ import DayTasksList from '@/components/organisms/DayTasksList.vue'
 import TasksFilters from '@/components/organisms/TasksFilters.vue'
 import { toLocalIso, formatMonthLabel } from '@/utils/date'
 import BaseButton from '@/components/ui/BaseButton.vue'
+
+const { t } = useI18n()
 
 const tasksStore = useTasksStore()
 const categoriesStore = useCategoriesStore()
@@ -40,11 +43,11 @@ const groupMap = computed<Record<string, string>>(() => {
 
 const getBadgeLabel = (task: Task) => {
   const groupId = (task as any).groupId ?? (task as any).group_id ?? null
-  if (groupId) return groupMap.value[groupId] ?? 'Group'
+  if (groupId) return groupMap.value[groupId] ?? t('common.group')
 
   const id = task.categoryId ?? null
-  if (!id) return '—'
-  return categoryMap.value[id] ?? '—'
+  if (!id) return t('common.none')
+  return categoryMap.value[id] ?? t('common.none')
 }
 
 const today = new Date()
@@ -55,7 +58,15 @@ const selectedDate = ref<string>(todayIso)
 
 const monthLabel = computed(() => formatMonthLabel(currentMonth.value))
 
-const weekDaysShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
+const weekDaysShort = computed(() => [
+  t('calendar.weekdays.mon'),
+  t('calendar.weekdays.tue'),
+  t('calendar.weekdays.wed'),
+  t('calendar.weekdays.thu'),
+  t('calendar.weekdays.fri'),
+  t('calendar.weekdays.sat'),
+  t('calendar.weekdays.sun'),
+])
 
 type DayCell = {
   iso: string
@@ -84,10 +95,10 @@ const onFilteredUpdate = (flat: Task[]) => {
 
 const filteredTasksByDate = computed<Record<string, Task[]>>(() => {
   const map: Record<string, Task[]> = {}
-  for (const t of filteredAllTasks.value) {
-    const key = t.date
+  for (const tt of filteredAllTasks.value) {
+    const key = tt.date
     if (!map[key]) map[key] = []
-    map[key]!.push(t)
+    map[key]!.push(tt)
   }
   return map
 })
@@ -125,9 +136,9 @@ const monthDays = computed<DayCell[]>(() => {
 
     const tasksForDay = getFilteredTasksForDay(iso)
 
-    const hasTodo = tasksForDay.some(t => t.status === 'todo')
-    const hasInProgress = tasksForDay.some(t => t.status === 'in_progress')
-    const hasOverdue = iso < todayIso && tasksForDay.some(t => t.status !== 'done')
+    const hasTodo = tasksForDay.some(tt => tt.status === 'todo')
+    const hasInProgress = tasksForDay.some(tt => tt.status === 'in_progress')
+    const hasOverdue = iso < todayIso && tasksForDay.some(tt => tt.status !== 'done')
     const showTodo = hasTodo && !hasOverdue
 
     cells.push({
@@ -161,8 +172,8 @@ const baseSelectedTasks = computed(() =>
 
 const selectedFilteredTasks = computed(() => {
   const list = getFilteredTasksForDay(selectedDate.value)
-  const set = new Set(list.map(t => t.id))
-  return baseSelectedTasks.value.filter(t => set.has(t.id))
+  const set = new Set(list.map(tt => tt.id))
+  return baseSelectedTasks.value.filter(tt => set.has(tt.id))
 })
 
 const changeMonth = (delta: number) => {
@@ -233,18 +244,18 @@ const handleToggleStatus = (id: string) => {
         @update:filteredTasks="onFilteredUpdate($event)"
       />
 
-      <BaseButton size="sm" variant="outline" @click="goToToday">Today</BaseButton>
+      <BaseButton size="sm" variant="outline" @click="goToToday">{{ t('calendar.actions.today') }}</BaseButton>
     </div>
 
     <div class="rounded-lg border border-border-soft bg-app-surface shadow-sm p-3 md:p-4">
       <div class="flex items-center justify-between mb-3 text-sm">
-        <BaseButton variant="outline" size="sm" @click="changeMonth(-1)">‹ Previous</BaseButton>
+        <BaseButton variant="outline" size="sm" @click="changeMonth(-1)">{{ t('calendar.actions.prev') }}</BaseButton>
 
         <div class="font-semibold capitalize text-text-primary text-sm md:text-base">
           {{ monthLabel }}
         </div>
 
-        <BaseButton variant="outline" size="sm" @click="changeMonth(1)">Next ›</BaseButton>
+        <BaseButton variant="outline" size="sm" @click="changeMonth(1)">{{ t('calendar.actions.next') }}</BaseButton>
       </div>
 
       <div class="calendar-inner">
@@ -283,9 +294,9 @@ const handleToggleStatus = (id: string) => {
             </div>
 
             <div class="calendar-markers">
-              <span v-if="day.hasOverdue" class="calendar-marker" aria-label="Overdue">🔖</span>
-              <span v-if="day.hasInProgress" class="calendar-marker" aria-label="In progress">▶️</span>
-              <span v-if="day.showTodo" class="calendar-marker" aria-label="Todo">⚠️</span>
+              <span v-if="day.hasOverdue" class="calendar-marker" :aria-label="t('calendar.markers.overdue')">🔖</span>
+              <span v-if="day.hasInProgress" class="calendar-marker" :aria-label="t('calendar.markers.inProgress')">▶️</span>
+              <span v-if="day.showTodo" class="calendar-marker" :aria-label="t('calendar.markers.todo')">⚠️</span>
             </div>
           </button>
         </div>

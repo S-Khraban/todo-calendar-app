@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { useTasksStore } from '@/stores/tasks'
 import { useCategoriesStore } from '@/stores/categories'
 import { useGroupsStore } from '@/stores/groups'
@@ -10,6 +11,8 @@ import TaskModal from '@/components/organisms/TaskModal.vue'
 import TasksFilters from '@/components/organisms/TasksFilters.vue'
 import { toLocalIso, formatIsoShort } from '@/utils/date'
 import { withAlpha } from '@/utils/color'
+
+const { t } = useI18n()
 
 const tasksStore = useTasksStore()
 const categoriesStore = useCategoriesStore()
@@ -66,11 +69,11 @@ const taskRowStyle = (task: Task) => {
 
 const getBadgeLabel = (task: Task) => {
   const groupId = getTaskGroupId(task)
-  if (groupId) return groupMap.value[groupId] ?? 'Group'
+  if (groupId) return groupMap.value[groupId] ?? t('common.group')
 
   const categoryId = task.categoryId ?? null
-  if (!categoryId) return '—'
-  return categoryMap.value[categoryId] ?? '—'
+  if (!categoryId) return t('common.none')
+  return categoryMap.value[categoryId] ?? t('common.none')
 }
 
 type UIPriority = 'low' | 'medium' | 'high'
@@ -82,6 +85,8 @@ const priorityOrder: Record<UIPriority, number> = {
 }
 
 const getPriority = (p?: UIPriority) => p ?? 'low'
+
+const formatStatusKey = (s: string) => s.replace('_', ' ')
 
 const todayIso = toLocalIso(new Date())
 
@@ -179,10 +184,10 @@ const confirmDelete = async () => {
 <template>
   <div class="page-container">
     <div class="flex items-center justify-between mb-4 gap-3">
-      <h1>All tasks</h1>
+      <h1>{{ t('navbar.links.allTasks') }}</h1>
 
       <Button type="button" size="sm" variant="primary" @click="openCreate">
-        Add task
+        {{ t('day.actions.addTask') }}
       </Button>
     </div>
 
@@ -191,7 +196,7 @@ const confirmDelete = async () => {
     </div>
 
     <div v-if="filteredTasks.length === 0" class="text-text-muted text-sm">
-      No tasks for current filters.
+      {{ t('tasks.empty') }}
     </div>
 
     <ul v-else class="list-none p-0 m-0 flex flex-col gap-2 text-sm">
@@ -219,8 +224,7 @@ const confirmDelete = async () => {
                 v-if="getPriority(task.priority as UIPriority | undefined) === 'high'"
                 class="mr-1 text-amber-500"
                 aria-hidden="true"
-                >★</span
-              >
+              >★</span>
               {{ task.title }}
             </div>
 
@@ -230,11 +234,14 @@ const confirmDelete = async () => {
             </span>
 
             <span v-if="task.startTime || task.endTime" class="shrink-0 text-[11px] text-text-muted">
-              • {{ task.startTime || '??:??' }}–{{ task.endTime || '...' }}
+              • {{ task.startTime || t('common.unknownTime') }}–{{ task.endTime || t('common.ellipsis') }}
+            </span>
+            <span v-else class="shrink-0 text-[11px] text-text-muted">
+              • {{ t('common.noTime') }}
             </span>
 
             <span class="shrink-0 text-[11px] text-text-muted">
-              • <span class="capitalize">{{ task.status.replace('_', ' ') }}</span>
+              • <span class="capitalize">{{ formatStatusKey(task.status) }}</span>
             </span>
           </div>
         </div>
@@ -251,7 +258,7 @@ const confirmDelete = async () => {
             class="border-none bg-transparent text-[11px] text-rose-500 hover:text-rose-400 cursor-pointer px-0 py-0 h-auto leading-4"
             @click.stop="openDeleteConfirm(task.id)"
           >
-            Delete
+            {{ t('user.categories.delete') }}
           </Button>
         </div>
       </li>
@@ -267,19 +274,19 @@ const confirmDelete = async () => {
       >
         <div class="w-full max-w-[360px] rounded-xl border border-border-soft bg-app-bg p-4 shadow-lg" @click.stop>
           <div class="text-sm font-semibold text-text-primary mb-2">
-            Delete this task?
+            {{ t('user.categories.delete') }}?
           </div>
 
           <div class="text-sm text-text-muted mb-4">
-            This action cannot be undone.
+            {{ t('taskModal.fields.description.placeholder') }}
           </div>
 
           <div class="flex justify-end gap-2">
             <Button type="button" size="sm" variant="ghost" @click="closeDeleteConfirm">
-              No
+              {{ t('common.cancel') }}
             </Button>
             <Button type="button" size="sm" variant="primary" @click="confirmDelete">
-              Yes
+              {{ t('common.save') }}
             </Button>
           </div>
         </div>

@@ -1,0 +1,287 @@
+{
+  "user": {
+    "title": "User Center",
+    "subtitle": "Manage profile, categories, groups and settings",
+    "tabs": {
+      "settings": "Settings",
+      "groups": "Groups",
+      "categories": "Categories"
+    },
+    "settings": {
+      "name": "Name",
+      "email": "Email",
+      "logout": "Logout",
+      "fontSize": "Font size",
+      "language": "Language",
+      "fontSizeModes": {
+        "s": "S",
+        "m": "M",
+        "l": "L"
+      },
+      "languageOptions": {
+        "en": "English",
+        "uk": "Ukrainian"
+      }
+    },
+    "categories": {
+      "showDefault": "Show default",
+      "newPlaceholder": "New category name",
+      "defaultPill": "def",
+      "hiddenPill": "hidden",
+      "rename": "Rename",
+      "show": "Show",
+      "hide": "Hide",
+      "delete": "Delete",
+      "deleteHint": "Default categories are protected",
+      "create": "Create",
+      "creating": "Creating…",
+      "loading": "Loading…",
+      "empty": "No categories yet"
+    }
+  },
+  "tasks": {
+    "empty": "No tasks yet",
+    "allEmpty": "No tasks for current filters."
+  },
+  "common": {
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "save": "Save",
+    "create": "Create",
+    "loading": "Loading…",
+    "creating": "Creating…",
+    "group": "Group",
+    "none": "—",
+    "noTime": "No time",
+    "unknownTime": "??:??",
+    "ellipsis": "...",
+    "unassigned": "Unassigned",
+    "delete": "Delete",
+    "yes": "Yes",
+    "no": "No",
+    "back": "Back",
+    "close": "Close",
+    "confirm": "Confirm",
+    "actions": "Actions",
+    "processing": "Processing…",
+    "retry": "Retry"
+  },
+  "navbar": {
+    "links": {
+      "today": "Today",
+      "week": "Week",
+      "calendar": "Calendar",
+      "allTasks": "All Tasks"
+    },
+    "avatarAlt": "User avatar"
+  },
+  "day": {
+    "title": "Tasks for {date}",
+    "hint": {
+      "hasTasks": "Here are your tasks for this day.",
+      "empty": "No tasks yet, add one below."
+    },
+    "actions": {
+      "prev": "← Prev",
+      "today": "Today",
+      "next": "Next →",
+      "addTask": "Add task"
+    },
+    "empty": "No tasks for this day."
+  },
+  "week": {
+    "title": "Weekly overview",
+    "range": "{start} — {end}",
+    "actions": {
+      "prev": "← Prev",
+      "today": "This week",
+      "next": "Next →"
+    },
+    "empty": "No tasks",
+    "weekday": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+    "mobile": {
+      "day": "Day",
+      "tasks": "Tasks"
+    }
+  },
+  "allTasks": {
+    "title": "All tasks",
+    "actions": {
+      "addTask": "Add task"
+    },
+    "empty": "No tasks for current filters.",
+    "deleteConfirm": {
+      "title": "Delete this task?",
+      "description": "This action cannot be undone.",
+      "actions": {
+        "cancel": "Cancel",
+        "confirm": "Delete"
+      }
+    },
+    "columns": {
+      "title": "Title",
+      "date": "Date",
+      "time": "Time",
+      "status": "Status",
+      "badge": "Label"
+    }
+  },
+  "calendar": {
+    "title": "Calendar",
+    "weekdays": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+    "actions": {
+      "prev": "‹ Previous",
+      "today": "Today",
+      "next": "Next ›"
+    },
+    "markers": {
+      "overdue": "Overdue",
+      "inProgress": "In progress",
+      "todo": "Todo"
+    },
+    "empty": "No tasks for the selected date."
+  },
+  "filters": {
+    "title": "Filters",
+    "status": {
+      "label": "Status:",
+      "all": "All",
+      "todo": "Planned",
+      "inProgress": "In progress",
+      "done": "Done",
+      "overdue": "Overdue"
+    },
+    "scope": {
+      "label": "Type:",
+      "all": "All",
+      "group": "Group",
+      "personal": "Personal"
+    },
+    "group": {
+      "label": "Group:",
+      "all": "All groups",
+      "empty": "No groups yet"
+    },
+    "category": {
+      "label": "Category:",
+      "all": "All categories",
+      "empty": "No categories yet"
+    },
+    "reset": "Reset filters"
+  },
+  "taskModal": {
+    "title": {
+      "new": "New task",
+      "edit": "Edit task",
+      "view": "Task"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "save": "Save",
+      "create": "Create"
+    },
+    "fields": {
+      "type": {
+        "label": "Task type",
+        "personal": "Personal",
+        "group": "Group"
+      },
+      "group": {
+        "label": "Group"
+      },
+      "assignee": {
+        "label": "Assignee",
+        "unassigned": "Unassigned"
+      },
+      "title": {
+        "label": "Title",
+        "placeholder": "What needs to be done?"
+      },
+      "description": {
+        "label": "Description (optional)",
+        "placeholder": "Task details"
+      },
+      "startDate": "Start date",
+      "endDate": "End date",
+      "startTime": "Start time",
+      "endTime": "End time",
+      "priority": {
+        "label": "Priority",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High ★"
+      },
+      "status": {
+        "label": "Status",
+        "todo": "To do",
+        "inProgress": "In progress",
+        "done": "Done"
+      },
+      "category": {
+        "label": "Category",
+        "placeholder": "Select a category"
+      }
+    },
+    "hints": {
+      "required": "Required",
+      "optional": "Optional"
+    },
+    "validation": {
+      "titleRequired": "Title is required.",
+      "categoryRequired": "Category is required for personal tasks.",
+      "groupRequired": "Group is required for group tasks.",
+      "dateRequired": "Date is required.",
+      "invalidTimeRange": "End time must be after start time."
+    }
+  },
+  "modals": {
+    "deleteTask": {
+      "title": "Delete this task?",
+      "description": "This action cannot be undone.",
+      "actions": {
+        "cancel": "Cancel",
+        "confirm": "Delete"
+      }
+    }
+  },
+  "auth": {
+    "signingIn": "Signing you in…",
+    "checkingSession": "Checking session…",
+    "redirecting": "Redirecting…"
+  },
+  "invites": {
+    "title": "Group invitation",
+    "checkingSession": "Checking session...",
+    "redirectingToSignIn": "Redirecting to sign in...",
+    "hint": "Accept or decline the invitation to join the group.",
+    "joinedSuccess": "Joined successfully. Redirecting...",
+    "actions": {
+      "accept": "Accept",
+      "decline": "Decline",
+      "processing": "Processing..."
+    },
+    "errors": {
+      "notFound": "Invite not found, expired, or not for your account.",
+      "invalidToken": "Invalid invite token.",
+      "acceptFailed": "Failed to accept invite",
+      "declineFailed": "Failed to decline invite"
+    }
+  }
+}

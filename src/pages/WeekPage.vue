@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useTasksStore } from '@/stores/tasks'
 import { useCategoriesStore } from '@/stores/categories'
 import { useGroupsStore } from '@/stores/groups'
@@ -12,6 +13,8 @@ import WeekMultiDayRow from '@/components/organisms/WeekMultiDayRow.vue'
 import TaskModal from '@/components/organisms/TaskModal.vue'
 import TasksFilters from '@/components/organisms/TasksFilters.vue'
 import { withAlpha } from '@/utils/color'
+
+const { t, locale } = useI18n()
 
 const tasksStore = useTasksStore()
 const categoriesStore = useCategoriesStore()
@@ -76,11 +79,11 @@ const weekTaskStyle = (task: Task) => {
 
 const getBadgeLabel = (task: Task) => {
   const groupId = getTaskGroupId(task)
-  if (groupId) return groupMap.value[groupId] ?? 'Group'
+  if (groupId) return groupMap.value[groupId] ?? t('common.group')
 
   const id = task.categoryId ?? null
-  if (!id) return '—'
-  return categoryMap.value[id] ?? '—'
+  if (!id) return t('common.none')
+  return categoryMap.value[id] ?? t('common.none')
 }
 
 const today = new Date()
@@ -110,7 +113,8 @@ const weekDays = computed<WeekDay[]>(() => {
     d.setDate(start.getDate() + i)
 
     const iso = toLocalIso(d)
-    const weekday = d.toLocaleDateString('en-US', { weekday: 'short' })
+
+    const weekday = d.toLocaleDateString(locale.value === 'uk' ? 'uk-UA' : 'en-US', { weekday: 'short' })
     const dayNumber = d.getDate()
 
     return { iso, weekday, dayNumber }
@@ -221,12 +225,12 @@ const handleSaveTask = async (payload: SavePayload) => {
 <template>
   <div class="page-container">
     <div class="pd4u-week-top">
-      <h1>Weekly overview</h1>
+      <h1>{{ t('week.title') }}</h1>
 
       <div class="pd4u-week-nav">
-        <button type="button" class="pd4u-week-nav__btn" @click="goPrevWeek">← Prev</button>
-        <button type="button" class="pd4u-week-nav__btn" @click="goThisWeek">Today</button>
-        <button type="button" class="pd4u-week-nav__btn" @click="goNextWeek">Next →</button>
+        <button type="button" class="pd4u-week-nav__btn" @click="goPrevWeek">{{ t('week.actions.prev') }}</button>
+        <button type="button" class="pd4u-week-nav__btn" @click="goThisWeek">{{ t('week.actions.today') }}</button>
+        <button type="button" class="pd4u-week-nav__btn" @click="goNextWeek">{{ t('week.actions.next') }}</button>
       </div>
     </div>
 
@@ -267,7 +271,7 @@ const handleSaveTask = async (payload: SavePayload) => {
           :class="{ 'pd4u-week-cell--today': col.day.iso === todayIso }"
           @click="openDay(col.day.iso)"
         >
-          <div v-if="col.tasks.length === 0" class="pd4u-week-empty">No tasks</div>
+          <div v-if="col.tasks.length === 0" class="pd4u-week-empty">{{ t('week.empty') }}</div>
 
           <ul v-else class="pd4u-week-tasks">
             <li
@@ -286,7 +290,7 @@ const handleSaveTask = async (payload: SavePayload) => {
               @click.stop="openEditTask(task)"
             >
               <div v-if="task.startTime || task.endTime" class="pd4u-week-task__time">
-                {{ task.startTime || '??:??' }} – {{ task.endTime || '...' }}
+                {{ task.startTime || t('common.unknownTime') }} – {{ task.endTime || t('common.ellipsis') }}
               </div>
 
               <div
@@ -333,7 +337,7 @@ const handleSaveTask = async (payload: SavePayload) => {
         </button>
 
         <div class="pd4u-week-mobile-tasks" @click="openDay(col.day.iso)">
-          <div v-if="col.tasks.length === 0" class="pd4u-week-empty">No tasks</div>
+          <div v-if="col.tasks.length === 0" class="pd4u-week-empty">{{ t('week.empty') }}</div>
 
           <ul v-else class="pd4u-week-mobile-pills">
             <li

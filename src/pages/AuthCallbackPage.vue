@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { supabase } from '@/services/supabaseClient'
 
 const router = useRouter()
+const { t } = useI18n()
 
 onMounted(async () => {
   const url = new URL(window.location.href)
@@ -30,7 +32,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="auth-callback">Signing you in…</div>
+  <div class="auth-callback">
+    {{ t('auth.signingIn') }}
+  </div>
 </template>
 
 <style scoped>

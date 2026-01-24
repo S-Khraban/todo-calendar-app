@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { supabase } from '@/services/supabaseClient'
 import { useGroupsStore } from '@/stores/groups'
+
+const { t } = useI18n()
 
 const route = useRoute()
 const router = useRouter()
@@ -29,12 +32,10 @@ onMounted(async () => {
 
   await groupsStore.fetchInvites()
 
-  const hasInvite = groupsStore.invites.some(
-    (i) => i.token === token.value
-  )
+  const hasInvite = groupsStore.invites.some(i => i.token === token.value)
 
   if (!hasInvite) {
-    error.value = 'Invite not found, expired, or not for your account.'
+    error.value = t('invites.errors.notFound')
   }
 })
 
@@ -42,7 +43,7 @@ const accept = async () => {
   error.value = null
 
   if (!token.value) {
-    error.value = 'Invalid invite token.'
+    error.value = t('invites.errors.invalidToken')
     return
   }
 
@@ -56,7 +57,7 @@ const accept = async () => {
   isLoading.value = false
 
   if (!ok) {
-    error.value = groupsStore.error ?? 'Failed to accept invite'
+    error.value = groupsStore.error ?? t('invites.errors.acceptFailed')
     return
   }
 
@@ -68,7 +69,7 @@ const decline = async () => {
   error.value = null
 
   if (!token.value) {
-    error.value = 'Invalid invite token.'
+    error.value = t('invites.errors.invalidToken')
     return
   }
 
@@ -77,7 +78,7 @@ const decline = async () => {
   isLoading.value = false
 
   if (!ok) {
-    error.value = groupsStore.error ?? 'Failed to decline invite'
+    error.value = groupsStore.error ?? t('invites.errors.declineFailed')
     return
   }
 
@@ -87,20 +88,26 @@ const decline = async () => {
 
 <template>
   <section class="invite">
-    <h1 class="invite__title">Group invitation</h1>
+    <h1 class="invite__title">{{ t('invites.title') }}</h1>
 
-    <p v-if="isCheckingAuth" class="invite__text">Checking session...</p>
+    <p v-if="isCheckingAuth" class="invite__text">
+      {{ t('invites.checkingSession') }}
+    </p>
 
     <template v-else>
-      <p v-if="!isAuthed" class="invite__text">Redirecting to sign in...</p>
+      <p v-if="!isAuthed" class="invite__text">
+        {{ t('invites.redirectingToSignIn') }}
+      </p>
 
       <template v-else>
         <p v-if="error" class="invite__error">{{ error }}</p>
+
         <p v-else-if="success" class="invite__success">
-          Joined successfully. Redirecting...
+          {{ t('invites.joinedSuccess') }}
         </p>
+
         <p v-else class="invite__text">
-          Accept or decline the invitation to join the group.
+          {{ t('invites.hint') }}
         </p>
 
         <div v-if="!success" class="actions">
@@ -110,7 +117,7 @@ const decline = async () => {
             :disabled="isLoading"
             @click="decline"
           >
-            Decline
+            {{ t('invites.actions.decline') }}
           </button>
 
           <button
@@ -119,7 +126,7 @@ const decline = async () => {
             :disabled="isLoading"
             @click="accept"
           >
-            {{ isLoading ? 'Processing...' : 'Accept' }}
+            {{ isLoading ? t('invites.actions.processing') : t('invites.actions.accept') }}
           </button>
         </div>
       </template>
