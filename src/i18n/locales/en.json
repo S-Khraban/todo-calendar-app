@@ -45,6 +45,10 @@
     "forDate": "Tasks for {date}",
     "emptyForDay": "No tasks for this day.",
     "noTime": "No time",
+    "search": {
+      "label": "Search",
+      "placeholder": "Search by title, description, author"
+    },
     "actions": {
       "add": "Add task"
     }
@@ -165,6 +169,10 @@
   },
   "filters": {
     "title": "Filters",
+    "dateRange": {
+      "from": "Date from",
+      "to": "Date to"
+    },
     "status": {
       "label": "Status:",
       "all": "All",
@@ -270,7 +278,14 @@
   "auth": {
     "signingIn": "Signing you in…",
     "checkingSession": "Checking session…",
-    "redirecting": "Redirecting…"
+    "redirecting": "Redirecting…",
+    "popover": {
+      "ariaLabel": "Authorization",
+      "title": "Authorization",
+      "continueWithGoogle": "Continue with Google",
+      "userProfile": "User Profile",
+      "disconnect": "Disconnect"
+    }
   },
   "invites": {
     "title": "Group invitation",

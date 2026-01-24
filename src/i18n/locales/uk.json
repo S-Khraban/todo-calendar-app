@@ -45,6 +45,10 @@
     "forDate": "Задачі на {date}",
     "emptyForDay": "Немає задач на цей день.",
     "noTime": "Без часу",
+    "search": {
+      "label": "Пошук",
+      "placeholder": "Пошук за назвою, описом або автором"
+    },
     "actions": {
       "add": "Додати задачу"
     }
@@ -165,6 +169,10 @@
   },
   "filters": {
     "title": "Фільтри",
+    "dateRange": {
+      "from": "Дата від",
+      "to": "Дата до"
+    },
     "status": {
       "label": "Статус:",
       "all": "Всі",
@@ -270,7 +278,14 @@
   "auth": {
     "signingIn": "Виконуємо вхід…",
     "checkingSession": "Перевіряємо сесію…",
-    "redirecting": "Перенаправлення…"
+    "redirecting": "Перенаправлення…",
+    "popover": {
+      "ariaLabel": "Авторизація",
+      "title": "Авторизація",
+      "continueWithGoogle": "Продовжити з Google",
+      "userProfile": "Профіль",
+      "disconnect": "Вийти"
+    }
   },
   "invites": {
     "title": "Запрошення до групи",

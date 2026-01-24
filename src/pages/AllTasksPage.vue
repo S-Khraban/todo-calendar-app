@@ -9,6 +9,8 @@ import type { Task, TaskPriority, TaskStatus } from '@/types'
 import Button from '@/components/atoms/Button.vue'
 import TaskModal from '@/components/organisms/TaskModal.vue'
 import TasksFilters from '@/components/organisms/TasksFilters.vue'
+import TaskSearchInput from '@/components/molecules/TaskSearchInput.vue'
+import DateRangeFilter from '@/components/molecules/DateRangeFilter.vue'
 import { toLocalIso, formatIsoShort } from '@/utils/date'
 import { withAlpha } from '@/utils/color'
 import { getTaskStatusEmoji } from '@/shared/taskStatusEmoji'
@@ -91,6 +93,15 @@ const formatStatusKey = (s: string) => s.replace('_', ' ')
 
 const todayIso = toLocalIso(new Date())
 
+const addDaysIso = (iso: string, days: number) => {
+  const d = new Date(`${iso}T00:00:00`)
+  d.setDate(d.getDate() + days)
+  return toLocalIso(d)
+}
+
+const dateFrom = ref(addDaysIso(todayIso, -2))
+const dateTo = ref(addDaysIso(todayIso, 2))
+
 const isTaskModalOpen = ref(false)
 const editingTask = ref<Task | null>(null)
 const modalDate = ref<string>(todayIso)
@@ -111,20 +122,60 @@ const baseTasks = computed(() =>
     }),
 )
 
-const filteredTasks = ref<Task[]>([])
+const filteredByFilters = ref<Task[]>([])
 
 watch(
   () => baseTasks.value,
   v => {
-    filteredTasks.value = v
+    filteredByFilters.value = v
   },
   { immediate: true },
 )
 
 const onFilteredUpdate = (flat: Task[]) => {
   const set = new Set(flat.map(t => t.id))
-  filteredTasks.value = baseTasks.value.filter(t => set.has(t.id))
+  filteredByFilters.value = baseTasks.value.filter(t => set.has(t.id))
 }
+
+const searchQuery = ref('')
+
+const norm = (v: unknown) => String(v ?? '').toLowerCase().trim()
+
+const getAuthorText = (task: Task) =>
+  norm(
+    (task as any).authorName ??
+      (task as any).author ??
+      (task as any).createdByName ??
+      (task as any).created_by_name ??
+      (task as any).createdBy?.name ??
+      (task as any).profiles?.full_name ??
+      (task as any).profiles?.name ??
+      (task as any).creator?.name ??
+      (task as any).created_by_email ??
+      '',
+  )
+
+const overlapsRange = (task: Task, fromIso: string, toIso: string) => {
+  const start = task.date
+  const end = (task.endDate ?? task.date) as string
+  return start <= toIso && end >= fromIso
+}
+
+const filteredTasks = computed(() => {
+  const fromIso = dateFrom.value
+  const toIso = dateTo.value
+  const ranged = filteredByFilters.value.filter(t => overlapsRange(t, fromIso, toIso))
+
+  const q = norm(searchQuery.value)
+  if (!q) return ranged
+
+  return ranged.filter(task => {
+    const title = norm(task.title)
+    const desc = norm((task as any).description)
+    const author = getAuthorText(task)
+    return title.includes(q) || desc.includes(q) || author.includes(q)
+  })
+})
 
 const openCreate = () => {
   modalDate.value = todayIso
@@ -190,6 +241,17 @@ const confirmDelete = async () => {
       <Button type="button" size="sm" variant="primary" @click="openCreate">
         {{ t('day.actions.addTask') }}
       </Button>
+    </div>
+
+    <div class="tasks-top-filters mb-5">
+      <TaskSearchInput v-model="searchQuery" />
+
+      <DateRangeFilter
+        :from="dateFrom"
+        :to="dateTo"
+        @update:from="dateFrom = $event"
+        @update:to="dateTo = $event"
+      />
     </div>
 
     <div class="mb-5">
@@ -297,3 +359,18 @@ const confirmDelete = async () => {
     </teleport>
   </div>
 </template>
+
+<style scoped>
+.tasks-top-filters {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 12px;
+  align-items: end;
+  min-width: 0;
+}
+
+.tasks-top-filters :deep(.task-search) {
+  max-width: none;
+  min-width: 0;
+}
+</style>

@@ -7,7 +7,7 @@ type Props = {
   hint?: string
   error?: string
   placeholder?: string
-  type?: 'text' | 'email' | 'password' | 'search' | 'number'
+type?: 'number' | 'text' | 'email' | 'password' | 'search' | 'date'
   disabled?: boolean
   readonly?: boolean
   size?: 'sm' | 'md'
