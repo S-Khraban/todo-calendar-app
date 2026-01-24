@@ -109,6 +109,32 @@ const saveTheme = () => {
   localStorage.setItem(THEME_KEY, themeMode.value)
 }
 
+type FontSizeMode = 's' | 'm' | 'l'
+const fontSize = ref<FontSizeMode>('m')
+
+const FONT_SIZE_KEY = 'todo_font_size'
+
+const fontSizePx: Record<FontSizeMode, string> = {
+  s: '14px',
+  m: '16px',
+  l: '18px',
+}
+
+const applyFontSize = () => {
+  document.documentElement.style.fontSize = fontSizePx[fontSize.value]
+}
+
+const loadFontSize = () => {
+  const saved = localStorage.getItem(FONT_SIZE_KEY) as FontSizeMode | null
+  fontSize.value = saved ?? 'm'
+  applyFontSize()
+}
+
+const saveFontSize = () => {
+  localStorage.setItem(FONT_SIZE_KEY, fontSize.value)
+  applyFontSize()
+}
+
 const route = useRoute()
 const router = useRouter()
 
@@ -124,6 +150,7 @@ const applyRedirectIfAuthed = async () => {
 
 onMounted(async () => {
   loadTheme()
+  loadFontSize()
   await loadUser()
   await applyRedirectIfAuthed()
 })
@@ -183,21 +210,20 @@ onMounted(async () => {
           </div>
 
           <div class="row">
+            <span class="label">Font size</span>
+
+            <select v-model="fontSize" class="select" @change="saveFontSize">
+              <option value="s">S</option>
+              <option value="m">M</option>
+              <option value="l">L</option>
+            </select>
+          </div>
+
+          <div class="row">
             <span class="label">Language</span>
             <span class="value muted">Later (uk/en)</span>
           </div>
 
-          <div class="row">
-            <span class="label">Date/Time format</span>
-            <span class="value muted">Later</span>
-          </div>
-
-          <div class="row">
-            <span class="label">Week starts</span>
-            <span class="value muted">Later (Mon/Sun)</span>
-          </div>
-
-          <p class="hint">Notifications — later.</p>
         </div>
       </div>
 

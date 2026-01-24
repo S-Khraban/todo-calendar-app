@@ -248,9 +248,7 @@ const handleToggleStatus = (id: string) => {
       </div>
 
       <div class="calendar-inner">
-        <div
-          class="grid grid-cols-7 gap-1 text-[11px] md:text-[12px] text-center mb-1 text-text-muted uppercase tracking-wide"
-        >
+        <div class="grid grid-cols-7 gap-1 text-[11px] md:text-[12px] text-center mb-1 text-text-muted uppercase tracking-wide">
           <div v-for="w in weekDaysShort" :key="w" class="py-1">
             {{ w }}
           </div>
@@ -284,10 +282,10 @@ const handleToggleStatus = (id: string) => {
               </div>
             </div>
 
-            <div class="mb-1 flex items-center justify-center gap-0.5 h-3">
-              <span v-if="day.hasOverdue" class="calendar-indicator calendar-indicator--square" />
-              <span v-if="day.hasInProgress" class="calendar-indicator calendar-indicator--triangle" />
-              <span v-if="day.showTodo" class="calendar-indicator calendar-indicator--circle" />
+            <div class="calendar-markers">
+              <span v-if="day.hasOverdue" class="calendar-marker" aria-label="Overdue">🔖</span>
+              <span v-if="day.hasInProgress" class="calendar-marker" aria-label="In progress">▶️</span>
+              <span v-if="day.showTodo" class="calendar-marker" aria-label="Todo">⚠️</span>
             </div>
           </button>
         </div>
@@ -326,6 +324,37 @@ const handleToggleStatus = (id: string) => {
 .calendar-filters-row > :first-child {
   flex: 1;
 }
-</style>
 
-<style src="./CalendarPage.css" scoped />
+.calendar-inner {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.calendar-day {
+  aspect-ratio: 1 / 0.5;
+}
+
+.calendar-markers {
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 16px;
+}
+
+.calendar-marker {
+  line-height: 1;
+  font-size: 14px;
+}
+
+@media (max-width: 600px) {
+  .calendar-markers {
+    height: 14px;
+  }
+
+  .calendar-marker {
+    font-size: 11px;
+  }
+}
+</style>
