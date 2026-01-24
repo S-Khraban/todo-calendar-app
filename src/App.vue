@@ -1,5 +1,6 @@
 <template>
   <div class="min-h-screen bg-app-bg text-text-primary">
+    <IntroFirstSession :active="Boolean(session)" />
     <Navbar />
 
     <main class="pd4u-container py-6">
@@ -15,6 +16,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { Session } from '@supabase/supabase-js'
 import Navbar from '@/components/organisms/Navbar.vue'
+import IntroFirstSession from '@/components/intro/IntroFirstSession.vue'
 import { supabase } from '@/services/supabaseClient'
 import { useTasksStore } from '@/stores/tasks'
 
@@ -50,9 +52,14 @@ onMounted(async () => {
   unsubscribe = data.subscription.unsubscribe
 })
 
-watch(session, async () => {
-  await refreshStores()
-}, { immediate: true })
+watch(
+  session,
+  async () => {
+    await refreshStores()
+  },
+  { immediate: true }
+)
+
 onBeforeUnmount(() => {
   unsubscribe?.()
 })
