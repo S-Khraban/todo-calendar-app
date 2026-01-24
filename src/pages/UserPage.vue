@@ -5,24 +5,32 @@ import { useCategoriesStore } from '@/stores/categories'
 import { supabase } from '@/services/supabaseClient'
 import GroupsTab from '@/components/organisms/GroupsTab.vue'
 
-type TabKey = 'profile' | 'categories' | 'groups' | 'settings'
+type TabKey = 'settings' | 'groups' | 'categories'
 
 const tabs: Array<{ key: TabKey; label: string }> = [
-  { key: 'profile', label: 'Profile' },
-  { key: 'categories', label: 'Categories' },
-  { key: 'groups', label: 'Groups' },
   { key: 'settings', label: 'Settings' },
+  { key: 'groups', label: 'Groups' },
+  { key: 'categories', label: 'Categories' },
 ]
 
-const activeTab = ref<TabKey>('profile')
+const activeTab = ref<TabKey>('settings')
 
-const userEmail = ref<string>('—')
+const userEmail = ref('—')
+const userName = ref('—')
 const isAuthLoading = ref(false)
 
 const loadUser = async () => {
   isAuthLoading.value = true
+
   const { data } = await supabase.auth.getUser()
-  userEmail.value = data.user?.email ?? '—'
+  const user = data.user
+
+  userEmail.value = user?.email ?? '—'
+  userName.value =
+    user?.user_metadata?.display_name
+    ?? user?.user_metadata?.full_name
+    ?? '—'
+
   isAuthLoading.value = false
 }
 
@@ -33,9 +41,15 @@ const logout = async () => {
 const categoriesStore = useCategoriesStore()
 
 const showDefault = ref(true)
+
 const filteredCategories = computed(() => {
   const list = categoriesStore.categories
-  return showDefault.value ? list : list.filter(c => !c.is_default)
+  const visible = showDefault.value ? list : list.filter(c => !c.is_default)
+
+  const custom = visible.filter(c => !c.is_default)
+  const defaults = visible.filter(c => c.is_default)
+
+  return [...custom, ...defaults]
 })
 
 const newCategoryName = ref('')
@@ -73,10 +87,6 @@ const removeCategory = async (id: string) => {
 
 const toggleHidden = async (id: string, next: boolean) => {
   await categoriesStore.toggleHidden(id, next)
-}
-
-const resetToDefault = async () => {
-  await categoriesStore.resetToDefault()
 }
 
 watch(activeTab, async tab => {
@@ -144,18 +154,13 @@ onMounted(async () => {
     </nav>
 
     <section class="panel">
-      <div v-if="activeTab === 'profile'" class="section">
-        <h2 class="section__title">Profile</h2>
+      <div v-if="activeTab === 'settings'" class="section">
+        <h2 class="section__title">Settings</h2>
 
         <div class="card">
           <div class="row">
             <span class="label">Name</span>
-            <span class="value muted">Later</span>
-          </div>
-
-          <div class="row">
-            <span class="label">Avatar</span>
-            <span class="value muted">Later</span>
+            <span class="value">{{ isAuthLoading ? 'Loading…' : userName }}</span>
           </div>
 
           <div class="row">
@@ -167,11 +172,40 @@ onMounted(async () => {
             <button class="btn" type="button" @click="logout">Logout</button>
           </div>
 
-          <p class="hint">Account deletion — later.</p>
+          <div class="row">
+            <span class="label">Theme</span>
+
+            <select v-model="themeMode" class="select" @change="saveTheme">
+              <option value="auto">Auto</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+
+          <div class="row">
+            <span class="label">Language</span>
+            <span class="value muted">Later (uk/en)</span>
+          </div>
+
+          <div class="row">
+            <span class="label">Date/Time format</span>
+            <span class="value muted">Later</span>
+          </div>
+
+          <div class="row">
+            <span class="label">Week starts</span>
+            <span class="value muted">Later (Mon/Sun)</span>
+          </div>
+
+          <p class="hint">Notifications — later.</p>
         </div>
       </div>
 
-      <div v-else-if="activeTab === 'categories'" class="section">
+      <div v-else-if="activeTab === 'groups'" class="section">
+        <GroupsTab />
+      </div>
+
+      <div v-else class="section">
         <h2 class="section__title">Categories</h2>
 
         <div class="card">
@@ -180,10 +214,6 @@ onMounted(async () => {
               <input type="checkbox" v-model="showDefault" />
               <span>Show default</span>
             </label>
-
-            <button class="btn btn--ghost" type="button" @click="resetToDefault">
-              Reset to default
-            </button>
           </div>
 
           <div class="create">
@@ -212,7 +242,7 @@ onMounted(async () => {
             <li v-for="c in filteredCategories" :key="c.id" class="list__item">
               <div class="left">
                 <span class="name" :class="{ muted: c.is_hidden }">{{ c.name }}</span>
-                <span v-if="c.is_default" class="pill">default</span>
+                <span v-if="c.is_default" class="pill">def</span>
                 <span v-if="c.is_hidden" class="pill pill--muted">hidden</span>
               </div>
 
@@ -251,43 +281,6 @@ onMounted(async () => {
           </ul>
         </div>
       </div>
-
-      <div v-else-if="activeTab === 'groups'" class="section">
-        <GroupsTab />
-      </div>
-
-      <div v-else class="section">
-        <h2 class="section__title">Settings</h2>
-
-        <div class="card">
-          <div class="row">
-            <span class="label">Theme</span>
-
-            <select v-model="themeMode" class="select" @change="saveTheme">
-              <option value="auto">Auto</option>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-            </select>
-          </div>
-
-          <div class="row">
-            <span class="label">Language</span>
-            <span class="value muted">Later (uk/en)</span>
-          </div>
-
-          <div class="row">
-            <span class="label">Date/Time format</span>
-            <span class="value muted">Later</span>
-          </div>
-
-          <div class="row">
-            <span class="label">Week starts</span>
-            <span class="value muted">Later (Mon/Sun)</span>
-          </div>
-
-          <p class="hint">Notifications — later.</p>
-        </div>
-      </div>
     </section>
   </main>
 </template>
@@ -316,7 +309,7 @@ onMounted(async () => {
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin: 16px 0;
 }
@@ -381,7 +374,7 @@ onMounted(async () => {
 
 .toolbar {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr;
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
