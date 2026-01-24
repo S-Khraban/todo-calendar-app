@@ -41,7 +41,13 @@
   },
   "tasks": {
     "empty": "No tasks yet",
-    "allEmpty": "No tasks for current filters."
+    "allEmpty": "No tasks for current filters.",
+    "forDate": "Tasks for {date}",
+    "emptyForDay": "No tasks for this day.",
+    "noTime": "No time",
+    "actions": {
+      "add": "Add task"
+    }
   },
   "common": {
     "cancel": "Cancel",

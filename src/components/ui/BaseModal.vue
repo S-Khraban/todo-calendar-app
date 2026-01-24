@@ -142,14 +142,18 @@ onBeforeUnmount(() => {
               </slot>
             </div>
 
-            <button
-              type="button"
-              class="h-4 w-4 inline-flex items-center justify-center rounded border border-border-soft bg-white text-[10px] leading-none text-text-primary hover:bg-app-surfaceSoft"
-              aria-label="Close"
-              @click="close"
-            >
-              <span class="block leading-none -mt-[1px]">✕</span>
-            </button>
+            <div class="flex items-center gap-2">
+              <slot name="header-actions" />
+
+              <button
+                type="button"
+                class="h-8 w-8 inline-flex items-center justify-center rounded border border-border-soft bg-white text-[10px] leading-none text-text-primary hover:bg-app-surfaceSoft"
+                aria-label="Close"
+                @click="close"
+              >
+                <span class="block leading-none -mt-[1px]">✕</span>
+              </button>
+            </div>
           </div>
 
           <div class="px-4 py-4">

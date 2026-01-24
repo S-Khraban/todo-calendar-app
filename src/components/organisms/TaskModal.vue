@@ -12,6 +12,8 @@ import BaseInput from '@/components/ui/BaseInput.vue'
 type TaskPriority = 'low' | 'medium' | 'high'
 type TaskScope = 'personal' | 'group'
 
+const { t } = useI18n()
+
 const props = defineProps<{
   modelValue: boolean
   task: Task | null
@@ -39,8 +41,6 @@ const emit = defineEmits<{
   ): void
 }>()
 
-const { t } = useI18n()
-
 const categoriesStore = useCategoriesStore()
 const groupsStore = useGroupsStore()
 
@@ -59,16 +59,15 @@ const myGroups = computed(() =>
 
 const form = reactive({
   scope: 'personal' as TaskScope,
-  groupId: '' as string,
-  assignedUserId: '' as string,
-
+  groupId: '',
+  assignedUserId: '',
   title: '',
   description: '',
   date: props.defaultDate,
   endDate: props.defaultDate,
   startTime: '',
   endTime: '',
-  categoryId: '' as string,
+  categoryId: '',
   status: 'todo' as TaskStatus,
   priority: 'low' as TaskPriority,
 })
@@ -80,8 +79,7 @@ const selectedGroup = computed(() => myGroups.value.find(g => g.id === form.grou
 
 const canAssign = computed(() => {
   if (form.scope !== 'group') return false
-  const role = selectedGroup.value?.role
-  return role === 'owner' || role === 'admin'
+  return selectedGroup.value?.role === 'owner' || selectedGroup.value?.role === 'admin'
 })
 
 const groupMembers = computed(() => {
@@ -168,18 +166,20 @@ watch(
   async task => {
     if (!task) {
       isLocked.value = false
-      form.scope = 'personal'
-      form.groupId = ''
-      form.assignedUserId = ''
-      form.title = ''
-      form.description = ''
-      form.date = props.defaultDate
-      form.endDate = props.defaultDate
-      form.startTime = ''
-      form.endTime = ''
-      form.categoryId = ''
-      form.status = 'todo'
-      form.priority = 'low'
+      Object.assign(form, {
+        scope: 'personal',
+        groupId: '',
+        assignedUserId: '',
+        title: '',
+        description: '',
+        date: props.defaultDate,
+        endDate: props.defaultDate,
+        startTime: '',
+        endTime: '',
+        categoryId: '',
+        status: 'todo',
+        priority: 'low',
+      })
       ensureDefaultCategory()
       return
     }
@@ -189,18 +189,20 @@ watch(
     const groupId = (task as any).groupId ?? (task as any).group_id ?? null
     const assignedUserId = (task as any).assignedUserId ?? (task as any).assigned_user_id ?? null
 
-    form.scope = groupId ? 'group' : 'personal'
-    form.groupId = groupId ?? ''
-    form.assignedUserId = assignedUserId ?? ''
-    form.title = task.title
-    form.description = task.description ?? ''
-    form.date = task.date
-    form.endDate = task.endDate ?? task.date
-    form.startTime = task.startTime ?? ''
-    form.endTime = task.endTime ?? ''
-    form.categoryId = groupId ? '' : (task.categoryId ?? '')
-    form.status = task.status
-    form.priority = (task.priority ?? 'low') as TaskPriority
+    Object.assign(form, {
+      scope: groupId ? 'group' : 'personal',
+      groupId: groupId ?? '',
+      assignedUserId: assignedUserId ?? '',
+      title: task.title,
+      description: task.description ?? '',
+      date: task.date,
+      endDate: task.endDate ?? task.date,
+      startTime: task.startTime ?? '',
+      endTime: task.endTime ?? '',
+      categoryId: groupId ? '' : (task.categoryId ?? ''),
+      status: task.status,
+      priority: (task.priority ?? 'low') as TaskPriority,
+    })
 
     ensureDefaultCategory()
 
@@ -253,21 +255,23 @@ const onSubmit = () => {
 
   close()
 }
+
+const modalTitle = computed(() => {
+  if (!isEdit.value) return t('taskModal.title.new')
+  if (isLocked.value) return t('taskModal.title.view')
+  return t('taskModal.title.edit')
+})
 </script>
 
 <template>
   <BaseModal
     :model-value="modelValue"
-    :title="isEdit ? (isLocked ? t('taskModal.title.view') : t('taskModal.title.edit')) : t('taskModal.title.new')"
+    :title="modalTitle"
     max-width="md"
     @update:model-value="setOpen"
     @close="close"
   >
     <template #header-actions>
-      <button type="button" class="tm-hbtn" @click="close">
-        {{ t('common.cancel') }}
-      </button>
-
       <button
         v-if="isEdit"
         type="button"
@@ -275,7 +279,11 @@ const onSubmit = () => {
         :aria-pressed="!isLocked"
         @click="toggleEdit"
       >
-        📝 {{ t('common.edit') }}
+        📝 {{ t('taskModal.actions.edit') }}
+      </button>
+
+      <button type="button" class="tm-hbtn" @click="close">
+        ↺ {{ t('taskModal.actions.cancel') }}
       </button>
     </template>
 
@@ -384,11 +392,11 @@ const onSubmit = () => {
         </div>
 
         <div class="tm-footer">
-          <BaseButton variant="ghost" type="button" @click="close">{{ t('common.cancel') }}</BaseButton>
-
           <BaseButton v-if="!isLocked" variant="solid" type="submit">
-            {{ isEdit ? t('common.save') : t('common.create') }}
+            {{ isEdit ? t('taskModal.actions.save') : t('taskModal.actions.create') }}
           </BaseButton>
+
+
         </div>
       </form>
     </div>
@@ -485,7 +493,7 @@ const onSubmit = () => {
 }
 
 .tm-hbtn {
-  height: 28px;
+  height: 32px;
   padding: 0 10px;
   border-radius: 8px;
   border: 1px solid var(--border-soft, #e5e7eb);

@@ -1,6 +1,6 @@
-
 export type TaskStatus = 'todo' | 'in_progress' | 'done'
 export type TaskPriority = 'low' | 'medium' | 'high'
+export type TaskCategory = 'work' | 'study' | 'rest' | 'holiday' | 'other'
 
 export type Task = {
   id: string

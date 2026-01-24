@@ -40,3 +40,6 @@ export const formatFullDate = (iso: string, locale: string): string => {
     year: 'numeric',
   })
 }
+
+export const formatFullDateUA = (iso: string): string =>
+  formatFullDate(iso, 'uk-UA')
