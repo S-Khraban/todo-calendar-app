@@ -516,7 +516,8 @@ onMounted(async () => {
 
 @media (max-width: 520px) {
   .row--2 {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
   }
 }
 </style>
