@@ -2,8 +2,11 @@
 import { computed } from 'vue'
 import type { Task } from '@/types'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { useGroupsStore } from '@/stores/groups'
 import { withAlpha } from '@/utils/color'
+
+const { t } = useI18n()
 
 const { dateLabel, tasks, categoryMap, getBadgeLabel } = defineProps<{
   dateLabel: string
@@ -46,14 +49,6 @@ const taskRowStyle = (task: Task) => {
   }
 }
 
-const handleToggle = (id: string) => {
-  emit('toggle-status', id)
-}
-
-const handleEdit = (task: Task) => {
-  emit('edit', task)
-}
-
 const priorityOrder: Record<NonNullable<Task['priority']>, number> = {
   high: 0,
   medium: 1,
@@ -76,8 +71,8 @@ const sortedTasks = computed(() => {
 
 const getCategoryLabel = (task: Task) => {
   const id = task.categoryId
-  if (!id) return '—'
-  return categoryMap[id] ?? '—'
+  if (!id) return t('common.none')
+  return categoryMap[id] ?? t('common.none')
 }
 
 const getLabel = (task: Task) => {
@@ -88,19 +83,21 @@ const getLabel = (task: Task) => {
 <template>
   <section>
     <div class="flex items-center justify-between mb-2 gap-3">
-      <h2 class="text-base font-semibold text-text-primary">Tasks for {{ dateLabel }}</h2>
+      <h2 class="text-base font-semibold text-text-primary">
+        {{ t('day.title', { date: dateLabel }) }}
+      </h2>
 
       <button
         type="button"
         class="px-3 py-1.5 rounded-md bg-brand-primary text-white text-xs cursor-pointer"
         @click="emit('add')"
       >
-        Add task
+        {{ t('day.actions.addTask') }}
       </button>
     </div>
 
     <div v-if="sortedTasks.length === 0" class="text-text-muted text-sm">
-      No tasks for this day.
+      {{ t('day.empty') }}
     </div>
 
     <ul v-else class="list-none p-0 m-0 flex flex-col gap-2 text-sm">
@@ -113,13 +110,13 @@ const getLabel = (task: Task) => {
           getPriority(task.priority) === 'high' ? 'ring-1 ring-amber-400/60' : '',
           getPriority(task.priority) === 'medium' ? 'border-border-soft/80' : '',
         ]"
-        @click="handleEdit(task)"
+        @click="emit('edit', task)"
       >
         <input
           type="checkbox"
           :checked="task.status === 'done'"
           @click.stop
-          @change="handleToggle(task.id)"
+          @change="emit('toggle-status', task.id)"
           class="cursor-pointer"
         />
 
@@ -142,9 +139,9 @@ const getLabel = (task: Task) => {
 
           <div class="text-xs text-text-muted mt-0.5">
             <span v-if="task.startTime || task.endTime">
-              {{ task.startTime || '??:??' }} – {{ task.endTime || '...' }}
+              {{ task.startTime || t('common.unknownTime') }} – {{ task.endTime || t('common.ellipsis') }}
             </span>
-            <span v-else>No time</span>
+            <span v-else>{{ t('common.noTime') }}</span>
           </div>
         </div>
 

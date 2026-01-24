@@ -12,7 +12,7 @@ import TasksFilters from '@/components/organisms/TasksFilters.vue'
 import { toLocalIso, formatMonthLabel } from '@/utils/date'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const tasksStore = useTasksStore()
 const categoriesStore = useCategoriesStore()
@@ -56,7 +56,7 @@ const todayIso = toLocalIso(today)
 const currentMonth = ref(new Date(today.getFullYear(), today.getMonth(), 1))
 const selectedDate = ref<string>(todayIso)
 
-const monthLabel = computed(() => formatMonthLabel(currentMonth.value))
+const monthLabel = computed(() => formatMonthLabel(currentMonth.value, locale.value))
 
 const weekDaysShort = computed(() => [
   t('calendar.weekdays.mon'),
