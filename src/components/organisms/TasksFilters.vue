@@ -131,10 +131,10 @@ const resetFilters = () => {
         class="px-2 py-1 rounded-md border border-border-soft bg-white text-text-primary"
       >
         <option value="all">{{ t('filters.status.all') }}</option>
-        <option value="todo">{{ t('filters.status.todo') }}</option>
-        <option value="in_progress">{{ t('filters.status.inProgress') }}</option>
-        <option value="done">{{ t('filters.status.done') }}</option>
-        <option value="overdue">{{ t('filters.status.overdue') }}</option>
+        <option value="todo"> ⚠️{{ t('filters.status.todo') }}</option>
+        <option value="in_progress"> ▶️{{ t('filters.status.inProgress') }}</option>
+        <option value="done"> ✅{{ t('filters.status.done') }}</option>
+        <option value="overdue"> 🔖{{ t('filters.status.overdue') }}</option>
       </select>
     </label>
 

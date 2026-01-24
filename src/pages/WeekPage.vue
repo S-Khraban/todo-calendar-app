@@ -13,6 +13,7 @@ import WeekMultiDayRow from '@/components/organisms/WeekMultiDayRow.vue'
 import TaskModal from '@/components/organisms/TaskModal.vue'
 import TasksFilters from '@/components/organisms/TasksFilters.vue'
 import { withAlpha } from '@/utils/color'
+import { getTaskStatusEmoji } from '@/shared/taskStatusEmoji'
 
 const { t, locale } = useI18n()
 
@@ -295,20 +296,21 @@ const handleSaveTask = async (payload: SavePayload) => {
 
               <div
                 :class="[
-                  'pd4u-week-task__title',
+                  'pd4u-week-task__title flex items-center gap-1',
                   getPriority(task.priority as UIPriority | undefined) === 'medium'
                     ? 'pd4u-week-task__title--medium'
                     : '',
                   task.status === 'done' ? 'line-through text-text-muted' : 'text-text-primary',
                 ]"
               >
+                <span class="shrink-0" aria-hidden="true">{{ getTaskStatusEmoji(task.status) }}</span>
                 <span
                   v-if="getPriority(task.priority as UIPriority | undefined) === 'high'"
                   class="pd4u-week-task__star"
                   aria-hidden="true"
                   >★</span
                 >
-                {{ task.title }}
+                <span class="truncate">{{ task.title }}</span>
               </div>
 
               <div class="pd4u-week-task__badge">
@@ -347,6 +349,7 @@ const handleSaveTask = async (payload: SavePayload) => {
               :style="weekTaskStyle(task)"
               @click.stop="openEditTask(task)"
             >
+              <span class="shrink-0" aria-hidden="true">{{ getTaskStatusEmoji(task.status) }}</span>
               <span
                 v-if="getPriority(task.priority as UIPriority | undefined) === 'high'"
                 class="pd4u-week-pill__star"

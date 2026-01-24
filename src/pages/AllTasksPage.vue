@@ -11,6 +11,7 @@ import TaskModal from '@/components/organisms/TaskModal.vue'
 import TasksFilters from '@/components/organisms/TasksFilters.vue'
 import { toLocalIso, formatIsoShort } from '@/utils/date'
 import { withAlpha } from '@/utils/color'
+import { getTaskStatusEmoji } from '@/shared/taskStatusEmoji'
 
 const { t } = useI18n()
 
@@ -213,6 +214,8 @@ const confirmDelete = async () => {
       >
         <div class="min-w-0">
           <div class="flex items-center gap-2 min-w-0">
+            <span class="shrink-0" aria-hidden="true">{{ getTaskStatusEmoji(task.status) }}</span>
+
             <div
               :class="[
                 'truncate leading-5',

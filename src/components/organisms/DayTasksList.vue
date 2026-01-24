@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { useGroupsStore } from '@/stores/groups'
 import { withAlpha } from '@/utils/color'
+import { getTaskStatusEmoji } from '@/shared/taskStatusEmoji'
 
 const { t } = useI18n()
 
@@ -123,18 +124,19 @@ const getLabel = (task: Task) => {
         <div class="flex-1 min-w-0">
           <div
             :class="[
-              'truncate',
+              'truncate flex items-center gap-1',
               getPriority(task.priority) === 'medium' ? 'font-semibold' : 'font-medium',
               task.status === 'done' ? 'line-through text-text-muted' : 'text-text-primary',
             ]"
           >
+            <span class="shrink-0" aria-hidden="true">{{ getTaskStatusEmoji(task.status) }}</span>
             <span
               v-if="getPriority(task.priority) === 'high'"
               class="mr-1 text-amber-500"
               aria-hidden="true"
               >★</span
             >
-            {{ task.title }}
+            <span class="truncate">{{ task.title }}</span>
           </div>
 
           <div class="text-xs text-text-muted mt-0.5">

@@ -12,6 +12,7 @@ import TasksFilters from '@/components/organisms/TasksFilters.vue'
 import { toLocalIso, formatFullDateUA } from '@/utils/date'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import { withAlpha } from '@/utils/color'
+import { getTaskStatusEmoji } from '@/shared/taskStatusEmoji'
 
 const { t } = useI18n()
 
@@ -248,7 +249,7 @@ const toggleStatus = (task: Task) => {
           <div class="flex-1 min-w-0">
             <div
               :class="[
-                'truncate',
+                'truncate flex items-center gap-1',
                 getPriority(task.priority as UIPrio | undefined) === 'medium'
                   ? 'font-semibold'
                   : 'font-medium',
@@ -257,13 +258,14 @@ const toggleStatus = (task: Task) => {
                   : 'text-text-primary',
               ]"
             >
+              <span class="shrink-0" aria-hidden="true">{{ getTaskStatusEmoji(task.status) }}</span>
               <span
                 v-if="getPriority(task.priority as UIPrio | undefined) === 'high'"
                 class="mr-1 text-amber-500"
               >
                 ★
               </span>
-              {{ task.title }}
+              <span class="truncate">{{ task.title }}</span>
             </div>
 
             <div class="text-xs text-text-muted mt-0.5">
