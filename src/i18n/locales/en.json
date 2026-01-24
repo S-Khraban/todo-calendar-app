@@ -11,6 +11,7 @@
       "name": "Name",
       "email": "Email",
       "logout": "Logout",
+      "deleteAccount": "Delete account",
       "fontSize": "Font size",
       "language": "Language",
       "fontSizeModes": {
@@ -21,6 +22,14 @@
       "languageOptions": {
         "en": "English",
         "uk": "Ukrainian"
+      },
+      "deleteModal": {
+        "title": "Confirm account deletion",
+        "text": "This will permanently delete your account and all related data. This action cannot be undone.",
+        "label": "Type the email address you used to register this account",
+        "placeholder": "Email",
+        "mismatch": "Email does not match",
+        "confirm": "Delete account"
       }
     },
     "categories": {
@@ -37,6 +46,29 @@
       "creating": "Creating…",
       "loading": "Loading…",
       "empty": "No categories yet"
+    }
+  },
+  "groups": {
+    "title": "Groups",
+    "empty": "You are not a member of any group yet.",
+    "roles": {
+      "owner": "Owner",
+      "admin": "Admin",
+      "member": "Member"
+    },
+    "actions": {
+      "create": "Create group",
+      "settings": "Settings",
+      "invite": "Invite",
+      "delete": "Delete",
+      "accept": "Accept",
+      "decline": "Decline"
+    },
+    "invites": {
+      "title": "Invites ({count})",
+      "subtitle": "Invited by {inviter} • {status}",
+      "unknown": "Unknown",
+      "pending": "Pending"
     }
   },
   "tasks": {
@@ -60,6 +92,8 @@
     "create": "Create",
     "loading": "Loading…",
     "creating": "Creating…",
+    "deleting": "Deleting…",
+    "error": "Something went wrong",
     "group": "Group",
     "none": "—",
     "noTime": "No time",
@@ -246,7 +280,8 @@
         "label": "Status",
         "todo": "To do",
         "inProgress": "In progress",
-        "done": "Done"
+        "done": "Done",
+        "overdue": "Overdue"
       },
       "category": {
         "label": "Category",

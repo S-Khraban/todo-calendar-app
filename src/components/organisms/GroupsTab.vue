@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { useGroupsStore, type GroupRole } from '@/stores/groups'
 import CreateGroupModal from '@/components/organisms/CreateGroupModal.vue'
 import InviteMemberModal from '@/components/organisms/InviteMemberModal.vue'
@@ -13,6 +14,8 @@ type GroupColor = (typeof GROUP_COLORS)[number]
 
 const groupsStore = useGroupsStore()
 const { groups, invites, isLoading, error } = storeToRefs(groupsStore)
+
+const { t } = useI18n()
 
 const isCreateOpen = ref(false)
 const isInviteOpen = ref(false)
@@ -37,7 +40,7 @@ onMounted(() => {
 })
 
 const roleLabel = (role: GroupRole) =>
-  role === 'owner' ? 'Owner' : role === 'admin' ? 'Admin' : 'Member'
+  role === 'owner' ? t('groups.roles.owner') : role === 'admin' ? t('groups.roles.admin') : t('groups.roles.member')
 
 const canInvite = (role: GroupRole) => role === 'owner' || role === 'admin'
 const canDelete = (role: GroupRole) => role === 'owner'
@@ -105,24 +108,35 @@ const declineInvite = async (token: string) => {
 }
 
 const inviteSubtitle = (inv: any) =>
-  `${inv.inviterEmail ? `Invited by ${inv.inviterEmail}` : 'Invited by Unknown'} • Pending`
+  t('groups.invites.subtitle', { inviter: inv.inviterEmail || t('groups.invites.unknown'), status: t('groups.invites.pending') })
+
+const isMobile = ref(false)
+
+const syncMobile = () => {
+  isMobile.value = window.matchMedia('(max-width: 640px)').matches
+}
+
+onMounted(() => {
+  syncMobile()
+  window.addEventListener('resize', syncMobile)
+})
 </script>
 
 <template>
   <section>
     <header class="groups-header">
-      <h2 class="groups-title">Groups</h2>
+      <h2 class="groups-title">{{ t('groups.title') }}</h2>
       <button type="button" class="btn" :disabled="isLoading" @click="openCreate">
-        Create group
+        {{ t('groups.actions.create') }}
       </button>
     </header>
 
-    <p v-if="isLoading">Loading...</p>
+    <p v-if="isLoading">{{ t('common.loading') }}</p>
     <p v-else-if="error" class="error">{{ error }}</p>
 
     <div v-else>
       <div v-if="invites.length" class="invites">
-        <h3 class="invites-title">Invites ({{ invites.length }})</h3>
+        <h3 class="invites-title">{{ t('groups.invites.title', { count: invites.length }) }}</h3>
 
         <ul class="invites-list">
           <li v-for="inv in invites" :key="inv.id" class="invite-item">
@@ -133,10 +147,10 @@ const inviteSubtitle = (inv: any) =>
 
             <div class="actions">
               <button type="button" class="btn" :disabled="isLoading" @click="declineInvite(inv.token)">
-                Decline
+                {{ t('groups.actions.decline') }}
               </button>
               <button type="button" class="btn" :disabled="isLoading" @click="acceptInvite(inv.token)">
-                Accept
+                {{ t('groups.actions.accept') }}
               </button>
             </div>
           </li>
@@ -144,7 +158,7 @@ const inviteSubtitle = (inv: any) =>
       </div>
 
       <div v-if="groups.length === 0" class="empty">
-        You are not a member of any group yet.
+        {{ t('groups.empty') }}
       </div>
 
       <ul v-else class="groups-list">
@@ -170,7 +184,7 @@ const inviteSubtitle = (inv: any) =>
               :disabled="isLoading"
               @click="openSettings(g.groupId, g.name, g.role, g.color as GroupColor)"
             >
-              Settings
+              {{ isMobile ? '⚙️' : t('groups.actions.settings') }}
             </button>
 
             <button
@@ -179,7 +193,7 @@ const inviteSubtitle = (inv: any) =>
               :disabled="isLoading || !canInvite(g.role)"
               @click="openInvite(g.groupId, g.name)"
             >
-              Invite
+              {{ isMobile ? '📩' : t('groups.actions.invite') }}
             </button>
 
             <button
@@ -189,7 +203,7 @@ const inviteSubtitle = (inv: any) =>
               :disabled="isLoading"
               @click="openDelete(g.groupId, g.name)"
             >
-              Delete
+              {{ t('groups.actions.delete') }}
             </button>
           </div>
         </li>

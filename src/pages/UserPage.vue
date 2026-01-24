@@ -42,6 +42,58 @@ const logout = async () => {
   await supabase.auth.signOut()
 }
 
+const isDeleteModalOpen = ref(false)
+const confirmEmail = ref('')
+const deleteError = ref('')
+const isDeleting = ref(false)
+
+const normalized = (s: string) => s.trim().toLowerCase()
+
+const isEmailMatch = computed(() => {
+  const email = userEmail.value
+  if (!email || email === '—') return false
+  return normalized(confirmEmail.value) === normalized(email)
+})
+
+const openDeleteModal = () => {
+  deleteError.value = ''
+  confirmEmail.value = ''
+  isDeleteModalOpen.value = true
+}
+
+const closeDeleteModal = () => {
+  if (isDeleting.value) return
+  isDeleteModalOpen.value = false
+}
+
+const router = useRouter()
+
+const deleteAccount = async () => {
+  if (!isEmailMatch.value || isDeleting.value) return
+
+  deleteError.value = ''
+  isDeleting.value = true
+
+  const { data, error } = await supabase.functions.invoke('delete-account')
+
+  if (error) {
+    deleteError.value = error.message || t('common.error')
+    isDeleting.value = false
+    return
+  }
+
+  if (!data?.ok) {
+    deleteError.value = t('common.error')
+    isDeleting.value = false
+    return
+  }
+
+  await supabase.auth.signOut()
+  isDeleting.value = false
+  isDeleteModalOpen.value = false
+  await router.replace('/')
+}
+
 const categoriesStore = useCategoriesStore()
 
 const showDefault = ref(true)
@@ -68,12 +120,12 @@ const createCategory = async () => {
 const startEditId = ref<string | null>(null)
 const editName = ref('')
 
-const startRename = (id: string, currentName: string) => {
+const openRenameModal = (id: string, currentName: string) => {
   startEditId.value = id
   editName.value = currentName
 }
 
-const cancelRename = () => {
+const closeRenameModal = () => {
   startEditId.value = null
   editName.value = ''
 }
@@ -82,15 +134,11 @@ const applyRename = async (id: string) => {
   const name = editName.value.trim()
   if (!name) return
   await categoriesStore.renameCategory(id, name)
-  cancelRename()
+  closeRenameModal()
 }
 
 const removeCategory = async (id: string) => {
   await categoriesStore.deleteCategory(id)
-}
-
-const toggleHidden = async (id: string, next: boolean) => {
-  await categoriesStore.toggleHidden(id, next)
 }
 
 watch(activeTab, async tab => {
@@ -143,7 +191,6 @@ const onChangeLocale = (e: Event) => {
 }
 
 const route = useRoute()
-const router = useRouter()
 
 const applyRedirectIfAuthed = async () => {
   const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
@@ -203,7 +250,13 @@ onMounted(async () => {
           </div>
 
           <div class="actions">
-            <button class="btn" type="button" @click="logout">{{ t('user.settings.logout') }}</button>
+            <button class="btn" type="button" @click="logout">
+              {{ t('user.settings.logout') }}
+            </button>
+
+            <button class="btn btn--danger" type="button" @click="openDeleteModal">
+              {{ t('user.settings.deleteAccount') }}
+            </button>
           </div>
 
           <div class="row row--2">
@@ -224,6 +277,59 @@ onMounted(async () => {
                 <option value="en">EN</option>
                 <option value="uk">UA</option>
               </select>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="isDeleteModalOpen" class="modal" role="dialog" aria-modal="true">
+          <div class="modal__backdrop" @click="closeDeleteModal" />
+
+          <div class="modal__panel">
+            <div class="modal__header">
+              <div class="modal__title">{{ t('user.settings.deleteModal.title') }}</div>
+              <button class="modal__close" type="button" :disabled="isDeleting" @click="closeDeleteModal">✕</button>
+            </div>
+
+            <div class="modal__body">
+              <p class="modal__text">
+                {{ t('user.settings.deleteModal.text') }}
+              </p>
+
+              <label class="modal__label">
+                {{ t('user.settings.deleteModal.label') }}
+              </label>
+
+              <input
+                v-model="confirmEmail"
+                class="input"
+                type="email"
+                autocomplete="off"
+                :disabled="isDeleting"
+                :placeholder="userEmail === '—' ? t('user.settings.deleteModal.placeholder') : userEmail"
+              />
+
+              <div v-if="confirmEmail && !isEmailMatch" class="modal__hint">
+                {{ t('user.settings.deleteModal.mismatch') }}
+              </div>
+
+              <div v-if="deleteError" class="modal__error">
+                {{ deleteError }}
+              </div>
+            </div>
+
+            <div class="modal__actions">
+              <button class="btn btn--ghost" type="button" :disabled="isDeleting" @click="closeDeleteModal">
+                {{ t('common.cancel') }}
+              </button>
+
+              <button
+                class="btn btn--danger"
+                type="button"
+                :disabled="!isEmailMatch || isDeleting"
+                @click="deleteAccount"
+              >
+                {{ isDeleting ? t('common.deleting') : t('user.settings.deleteModal.confirm') }}
+              </button>
             </div>
           </div>
         </div>
@@ -269,41 +375,69 @@ onMounted(async () => {
           <ul class="list" v-else>
             <li v-for="c in filteredCategories" :key="c.id" class="list__item">
               <div class="left">
-                <span class="name" :class="{ muted: c.is_hidden }">{{ c.name }}</span>
+                <span class="name">{{ c.name }}</span>
                 <span v-if="c.is_default" class="pill">{{ t('user.categories.defaultPill') }}</span>
-                <span v-if="c.is_hidden" class="pill pill--muted">{{ t('user.categories.hiddenPill') }}</span>
               </div>
 
               <div class="right">
-                <template v-if="startEditId === c.id">
-                  <input v-model="editName" class="input input--sm" type="text" />
-                  <button class="btn btn--sm" type="button" @click="applyRename(c.id)">{{ t('common.save') }}</button>
-                  <button class="btn btn--ghost btn--sm" type="button" @click="cancelRename">{{ t('common.cancel') }}</button>
-                </template>
+                <button
+                  v-if="!c.is_default"
+                  class="btn btn--ghost btn--sm"
+                  type="button"
+                  @click="openRenameModal(c.id, c.name)"
+                >
+                  {{ t('user.categories.rename') }}
+                </button>
 
-                <template v-else>
-                  <button class="btn btn--ghost btn--sm" type="button" @click="startRename(c.id, c.name)">
-                    {{ t('user.categories.rename') }}
-                  </button>
+                <button
+                  class="btn btn--danger btn--sm"
+                  type="button"
+                  :disabled="c.is_default"
+                  @click="removeCategory(c.id)"
+                  :title="t('user.categories.deleteHint')"
+                >
+                  {{ t('user.categories.delete') }}
+                </button>
+              </div>
 
-                  <button
-                    class="btn btn--ghost btn--sm"
-                    type="button"
-                    @click="toggleHidden(c.id, !c.is_hidden)"
-                  >
-                    {{ c.is_hidden ? t('user.categories.show') : t('user.categories.hide') }}
-                  </button>
+              <div
+                v-if="startEditId === c.id"
+                class="row-modal"
+                role="dialog"
+                aria-modal="true"
+              >
+                <div class="row-modal__backdrop" @click="closeRenameModal" />
 
-                  <button
-                    class="btn btn--danger btn--sm"
-                    type="button"
-                    :disabled="c.is_default"
-                    @click="removeCategory(c.id)"
-                    :title="t('user.categories.deleteHint')"
-                  >
-                    {{ t('user.categories.delete') }}
-                  </button>
-                </template>
+                <div class="row-modal__panel">
+                  <div class="row-modal__header">
+                    <div class="row-modal__title">{{ t('user.categories.rename') }}</div>
+                    <button class="row-modal__close" type="button" @click="closeRenameModal">✕</button>
+                  </div>
+
+                  <div class="row-modal__body">
+                    <input
+                      v-model="editName"
+                      class="input"
+                      type="text"
+                      autocomplete="off"
+                      :placeholder="c.name"
+                    />
+                  </div>
+
+                  <div class="row-modal__actions">
+                    <button class="btn btn--ghost" type="button" @click="closeRenameModal">
+                      {{ t('common.cancel') }}
+                    </button>
+                    <button
+                      class="btn"
+                      type="button"
+                      :disabled="!editName.trim()"
+                      @click="applyRename(c.id)"
+                    >
+                      {{ t('common.save') }}
+                    </button>
+                  </div>
+                </div>
               </div>
             </li>
           </ul>
@@ -406,6 +540,9 @@ onMounted(async () => {
 .actions {
   margin-top: 12px;
   margin-bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .toolbar {
@@ -449,6 +586,7 @@ onMounted(async () => {
 }
 
 .list__item {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 12px;
@@ -481,16 +619,17 @@ onMounted(async () => {
   opacity: 0.9;
 }
 
-.pill--muted {
-  opacity: 0.6;
-}
-
 .btn {
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   background: transparent;
   cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .btn--ghost {
@@ -514,10 +653,168 @@ onMounted(async () => {
   color: #b00020;
 }
 
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+}
+
+.modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.modal__panel {
+  position: relative;
+  width: min(520px, calc(100vw - 32px));
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  padding: 14px;
+}
+
+.modal__header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.modal__title {
+  font-weight: 700;
+}
+
+.modal__close {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: transparent;
+  cursor: pointer;
+}
+
+.modal__close:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.modal__body {
+  padding: 12px 0;
+  display: grid;
+  gap: 10px;
+}
+
+.modal__text {
+  margin: 0;
+  opacity: 0.85;
+}
+
+.modal__label {
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.modal__hint {
+  font-size: 12px;
+  color: #b00020;
+  opacity: 0.95;
+}
+
+.modal__error {
+  font-size: 13px;
+  color: #b00020;
+}
+
+.modal__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.row-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+}
+
+.row-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+}
+
+.row-modal__panel {
+  position: relative;
+  width: min(560px, calc(100% - 16px));
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  padding: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.row-modal__header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.row-modal__title {
+  font-weight: 700;
+}
+
+.row-modal__close {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: transparent;
+  cursor: pointer;
+}
+
+.row-modal__body {
+  padding: 10px 0;
+}
+
+.row-modal__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
 @media (max-width: 520px) {
   .row--2 {
     grid-template-columns: 1fr 1fr;
     gap: 12px;
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .modal__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .row-modal__actions {
+    grid-template-columns: 1fr;
   }
 }
 </style>

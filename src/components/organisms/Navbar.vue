@@ -2,7 +2,11 @@
   <nav class="pd4u-navbar">
     <div class="pd4u-container pd4u-navbar__inner">
       <div class="pd4u-navbar__logo">
-        PD4U
+        <img
+          src="/images/pd4u_64.png"
+          alt="PD4U"
+          class="pd4u-navbar__logo-img"
+        />
       </div>
 
       <div class="pd4u-navbar__right">
@@ -134,10 +138,14 @@ onMounted(async () => {
 }
 
 .pd4u-navbar__logo {
-  font-weight: 700;
-  font-size: 16px;
-  letter-spacing: 0.04em;
-  color: #111827;
+  display: flex;
+  align-items: center;
+}
+
+.pd4u-navbar__logo-img {
+  width: 28px;
+  height: 28px;
+  display: block;
 }
 
 .pd4u-navbar__right {
