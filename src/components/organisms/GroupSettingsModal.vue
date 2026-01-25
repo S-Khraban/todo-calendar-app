@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { supabase } from '@/services/supabaseClient'
 import { useGroupsStore, type GroupMemberItem, type GroupRole } from '@/stores/groups'
 import { GROUP_COLORS } from '@/constants/groupColors'
 
@@ -31,8 +30,6 @@ const colorDraft = ref<GroupColor>(GROUP_COLORS[0])
 const members = ref<GroupMemberItem[]>([])
 const localLoading = ref(false)
 const localError = ref<string | null>(null)
-const myUserId = ref<string | null>(null)
-const confirmTransferUserId = ref<string | null>(null)
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -45,12 +42,6 @@ const close = () => {
   isOpen.value = false
   tab.value = 'group'
   localError.value = null
-  confirmTransferUserId.value = null
-}
-
-const loadMe = async () => {
-  const { data } = await supabase.auth.getUser()
-  myUserId.value = data.user?.id ?? null
 }
 
 const loadMembers = async () => {
@@ -86,7 +77,6 @@ const initDrafts = () => {
 
 const openInit = async () => {
   initDrafts()
-  await loadMe()
   await loadMembers()
 }
 
@@ -118,8 +108,9 @@ const canEditMember = (m: GroupMemberItem) => {
 }
 
 const roleOptions = (m: GroupMemberItem): GroupRole[] => {
-  if (props.myRole === 'owner') return ['owner', 'admin', 'member']
-  if (props.myRole === 'admin') return m.role === 'owner' ? ['owner'] : ['admin', 'member']
+  if (m.role === 'owner') return ['owner']
+  if (props.myRole === 'owner') return ['admin', 'member']
+  if (props.myRole === 'admin') return ['admin', 'member']
   return [m.role]
 }
 
@@ -150,7 +141,6 @@ const saveGroup = async () => {
 const setRole = async (userId: string, role: GroupRole) => {
   if (!props.groupId) return
   if (role === 'owner') {
-    localError.value = t('groups.errors.cannotSetOwner')
     await loadMembers()
     return
   }
@@ -174,42 +164,6 @@ const setRole = async (userId: string, role: GroupRole) => {
   }
 }
 
-const canTransferOwnership = (m: GroupMemberItem) => {
-  if (props.myRole !== 'owner') return false
-  if (!myUserId.value) return false
-  if (m.userId === myUserId.value) return false
-  return m.role !== 'owner'
-}
-
-const askTransfer = (userId: string) => {
-  confirmTransferUserId.value = userId
-}
-
-const cancelTransfer = () => {
-  confirmTransferUserId.value = null
-}
-
-const confirmTransfer = async () => {
-  if (!props.groupId || !confirmTransferUserId.value) return
-  localError.value = null
-  localLoading.value = true
-
-  try {
-    const res = await groupsStore.transferOwnership(props.groupId, confirmTransferUserId.value)
-    if (!res.ok) {
-      localError.value = res.error ?? t('groups.errors.transferOwnership')
-      return
-    }
-    confirmTransferUserId.value = null
-    emit('updated')
-    await loadMembers()
-  } catch (e: any) {
-    localError.value = e?.message ?? t('groups.errors.transferOwnership')
-  } finally {
-    localLoading.value = false
-  }
-}
-
 onMounted(() => {
   if (props.modelValue) openInit()
 })
@@ -229,20 +183,10 @@ onMounted(() => {
 
       <div v-else>
         <div class="tabs">
-          <button
-            type="button"
-            class="tab"
-            :class="{ active: tab === 'group' }"
-            @click="tab = 'group'"
-          >
+          <button type="button" class="tab" :class="{ active: tab === 'group' }" @click="tab = 'group'">
             {{ t('groups.settings.tabs.group') }}
           </button>
-          <button
-            type="button"
-            class="tab"
-            :class="{ active: tab === 'members' }"
-            @click="tab = 'members'"
-          >
+          <button type="button" class="tab" :class="{ active: tab === 'members' }" @click="tab = 'members'">
             {{ t('groups.settings.tabs.members') }}
           </button>
         </div>
@@ -282,12 +226,7 @@ onMounted(() => {
             >
               {{ t('common.actions.save') }}
             </button>
-            <button
-              type="button"
-              class="btn"
-              :disabled="props.loading || localLoading"
-              @click="loadMembers"
-            >
+            <button type="button" class="btn" :disabled="props.loading || localLoading" @click="loadMembers">
               {{ t('common.actions.refresh') }}
             </button>
           </div>
@@ -296,12 +235,7 @@ onMounted(() => {
         <div v-else class="panel">
           <div class="members-head">
             <div class="muted">{{ t('groups.settings.membersTitle') }}</div>
-            <button
-              type="button"
-              class="btn"
-              :disabled="props.loading || localLoading"
-              @click="loadMembers"
-            >
+            <button type="button" class="btn" :disabled="props.loading || localLoading" @click="loadMembers">
               {{ t('common.actions.refresh') }}
             </button>
           </div>
@@ -326,16 +260,6 @@ onMounted(() => {
                     {{ t(`groups.roles.${r}`) }}
                   </option>
                 </select>
-
-                <button
-                  v-if="canTransferOwnership(m)"
-                  type="button"
-                  class="btn"
-                  :disabled="props.loading || localLoading"
-                  @click="askTransfer(m.userId)"
-                >
-                  {{ t('groups.settings.transfer') }}
-                </button>
               </div>
             </li>
           </ul>
@@ -345,33 +269,6 @@ onMounted(() => {
       <footer class="foot">
         <button type="button" class="btn" @click="close">{{ t('common.actions.close') }}</button>
       </footer>
-    </div>
-
-    <div v-if="confirmTransferUserId" class="confirm-overlay" @click.self="cancelTransfer">
-      <div class="confirm">
-        <div class="confirm-title">{{ t('groups.settings.transferConfirm.title') }}</div>
-        <div class="confirm-text">
-          {{ t('groups.settings.transferConfirm.text') }}
-        </div>
-        <div class="confirm-actions">
-          <button
-            type="button"
-            class="btn"
-            :disabled="props.loading || localLoading"
-            @click="cancelTransfer"
-          >
-            {{ t('common.actions.cancel') }}
-          </button>
-          <button
-            type="button"
-            class="btn btn-danger"
-            :disabled="props.loading || localLoading"
-            @click="confirmTransfer"
-          >
-            {{ t('groups.settings.transferConfirm.confirm') }}
-          </button>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -572,39 +469,5 @@ onMounted(() => {
   border-top: 1px solid #eee;
   display: flex;
   justify-content: flex-end;
-}
-
-.confirm-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  z-index: 60;
-}
-
-.confirm {
-  width: min(420px, 100%);
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #ddd;
-  padding: 14px;
-}
-
-.confirm-title {
-  font-weight: 700;
-}
-
-.confirm-text {
-  margin-top: 6px;
-  opacity: 0.8;
-}
-
-.confirm-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 12px;
 }
 </style>

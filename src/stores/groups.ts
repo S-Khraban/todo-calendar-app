@@ -257,18 +257,6 @@ export const useGroupsStore = defineStore('groups', () => {
     return { ok: true as const }
   }
 
-  const transferOwnership = async (groupId: string, newOwnerId: string) => {
-    const { error: e } = await supabase.rpc('transfer_group_ownership', {
-      p_group_id: groupId,
-      p_new_owner_id: newOwnerId,
-    })
-
-    if (e) return { ok: false as const, error: e.message }
-
-    await Promise.all([fetchMyGroups(), fetchGroupMembers(groupId, true)])
-    return { ok: true as const }
-  }
-
   return {
     groups,
     invites,
@@ -286,6 +274,5 @@ export const useGroupsStore = defineStore('groups', () => {
     updateGroup,
     renameGroup,
     setMemberRole,
-    transferOwnership,
   }
 })
