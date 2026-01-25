@@ -42,58 +42,6 @@ const logout = async () => {
   await supabase.auth.signOut()
 }
 
-const isDeleteModalOpen = ref(false)
-const confirmEmail = ref('')
-const deleteError = ref('')
-const isDeleting = ref(false)
-
-const normalized = (s: string) => s.trim().toLowerCase()
-
-const isEmailMatch = computed(() => {
-  const email = userEmail.value
-  if (!email || email === '—') return false
-  return normalized(confirmEmail.value) === normalized(email)
-})
-
-const openDeleteModal = () => {
-  deleteError.value = ''
-  confirmEmail.value = ''
-  isDeleteModalOpen.value = true
-}
-
-const closeDeleteModal = () => {
-  if (isDeleting.value) return
-  isDeleteModalOpen.value = false
-}
-
-const router = useRouter()
-
-const deleteAccount = async () => {
-  if (!isEmailMatch.value || isDeleting.value) return
-
-  deleteError.value = ''
-  isDeleting.value = true
-
-  const { data, error } = await supabase.functions.invoke('delete-account')
-
-  if (error) {
-    deleteError.value = error.message || t('common.error')
-    isDeleting.value = false
-    return
-  }
-
-  if (!data?.ok) {
-    deleteError.value = t('common.error')
-    isDeleting.value = false
-    return
-  }
-
-  await supabase.auth.signOut()
-  isDeleting.value = false
-  isDeleteModalOpen.value = false
-  await router.replace('/')
-}
-
 const categoriesStore = useCategoriesStore()
 
 const showDefault = ref(true)
@@ -191,6 +139,7 @@ const onChangeLocale = (e: Event) => {
 }
 
 const route = useRoute()
+const router = useRouter()
 
 const applyRedirectIfAuthed = async () => {
   const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
@@ -253,10 +202,6 @@ onMounted(async () => {
             <button class="btn" type="button" @click="logout">
               {{ t('user.settings.logout') }}
             </button>
-
-            <button class="btn btn--danger" type="button" @click="openDeleteModal">
-              {{ t('user.settings.deleteAccount') }}
-            </button>
           </div>
 
           <div class="row row--2">
@@ -277,59 +222,6 @@ onMounted(async () => {
                 <option value="en">EN</option>
                 <option value="uk">UA</option>
               </select>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="isDeleteModalOpen" class="modal" role="dialog" aria-modal="true">
-          <div class="modal__backdrop" @click="closeDeleteModal" />
-
-          <div class="modal__panel">
-            <div class="modal__header">
-              <div class="modal__title">{{ t('user.settings.deleteModal.title') }}</div>
-              <button class="modal__close" type="button" :disabled="isDeleting" @click="closeDeleteModal">✕</button>
-            </div>
-
-            <div class="modal__body">
-              <p class="modal__text">
-                {{ t('user.settings.deleteModal.text') }}
-              </p>
-
-              <label class="modal__label">
-                {{ t('user.settings.deleteModal.label') }}
-              </label>
-
-              <input
-                v-model="confirmEmail"
-                class="input"
-                type="email"
-                autocomplete="off"
-                :disabled="isDeleting"
-                :placeholder="userEmail === '—' ? t('user.settings.deleteModal.placeholder') : userEmail"
-              />
-
-              <div v-if="confirmEmail && !isEmailMatch" class="modal__hint">
-                {{ t('user.settings.deleteModal.mismatch') }}
-              </div>
-
-              <div v-if="deleteError" class="modal__error">
-                {{ deleteError }}
-              </div>
-            </div>
-
-            <div class="modal__actions">
-              <button class="btn btn--ghost" type="button" :disabled="isDeleting" @click="closeDeleteModal">
-                {{ t('common.cancel') }}
-              </button>
-
-              <button
-                class="btn btn--danger"
-                type="button"
-                :disabled="!isEmailMatch || isDeleting"
-                @click="deleteAccount"
-              >
-                {{ isDeleting ? t('common.deleting') : t('user.settings.deleteModal.confirm') }}
-              </button>
             </div>
           </div>
         </div>
@@ -653,91 +545,6 @@ onMounted(async () => {
   color: #b00020;
 }
 
-.modal {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: grid;
-  place-items: center;
-}
-
-.modal__backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.28);
-}
-
-.modal__panel {
-  position: relative;
-  width: min(520px, calc(100vw - 32px));
-  border-radius: 14px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: #fff;
-  padding: 14px;
-}
-
-.modal__header {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.modal__title {
-  font-weight: 700;
-}
-
-.modal__close {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: transparent;
-  cursor: pointer;
-}
-
-.modal__close:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.modal__body {
-  padding: 12px 0;
-  display: grid;
-  gap: 10px;
-}
-
-.modal__text {
-  margin: 0;
-  opacity: 0.85;
-}
-
-.modal__label {
-  font-size: 13px;
-  opacity: 0.75;
-}
-
-.modal__hint {
-  font-size: 12px;
-  color: #b00020;
-  opacity: 0.95;
-}
-
-.modal__error {
-  font-size: 13px;
-  color: #b00020;
-}
-
-.modal__actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
-}
-
 .row-modal {
   position: absolute;
   inset: 0;
@@ -807,10 +614,6 @@ onMounted(async () => {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
-  }
-
-  .modal__actions {
-    grid-template-columns: 1fr;
   }
 
   .row-modal__actions {
