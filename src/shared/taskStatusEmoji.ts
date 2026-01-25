@@ -2,10 +2,10 @@ import type { Task } from '@/types'
 
 export const TASK_STATUS_EMOJI: Record<string, string> = {
   todo: '⚠️',
-  in_progress: '▶️',
+  in_progress: '⏳',
   done: '✅',
   overdue: '🔖',
 }
 
-export const getTaskStatusEmoji = (status: Task['status']) =>
+export const getTaskStatusEmoji = (status: Task['status'] | 'overdue' | 'all') =>
   TASK_STATUS_EMOJI[String(status)] ?? ''

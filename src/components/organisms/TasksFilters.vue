@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useCategoriesStore } from '@/stores/categories'
 import { useGroupsStore } from '@/stores/groups'
 import type { Task, TaskStatus } from '@/types'
+import { getTaskStatusEmoji } from '@/shared/taskStatusEmoji'
 
 type ScopeFilter = 'all' | 'group' | 'personal'
 type StatusFilter = TaskStatus | 'all' | 'overdue'
@@ -31,10 +32,7 @@ const { visibleCategories } = storeToRefs(categoriesStore)
 const { groups } = storeToRefs(groupsStore)
 
 onMounted(async () => {
-  await Promise.all([
-    categoriesStore.fetchCategories(),
-    groupsStore.fetchMyGroups(),
-  ])
+  await Promise.all([categoriesStore.fetchCategories(), groupsStore.fetchMyGroups()])
 })
 
 const scope = ref<ScopeFilter>('all')
@@ -43,9 +41,7 @@ const groupId = ref<string>('all')
 const categoryId = ref<string>('all')
 
 const categoryOptions = computed(() => visibleCategories.value ?? [])
-const groupOptions = computed(() =>
-  (groups.value ?? []).map(g => ({ id: g.groupId, name: g.name })),
-)
+const groupOptions = computed(() => (groups.value ?? []).map(g => ({ id: g.groupId, name: g.name })))
 
 const getTaskGroupId = (t: Task) =>
   ((t as any).groupId ?? (t as any).group_id ?? null) as string | null
@@ -131,10 +127,12 @@ const resetFilters = () => {
         class="px-2 py-1 rounded-md border border-border-soft bg-white text-text-primary"
       >
         <option value="all">{{ t('filters.status.all') }}</option>
-        <option value="todo"> ⚠️{{ t('filters.status.todo') }}</option>
-        <option value="in_progress"> ▶️{{ t('filters.status.inProgress') }}</option>
-        <option value="done"> ✅{{ t('filters.status.done') }}</option>
-        <option value="overdue"> 🔖{{ t('filters.status.overdue') }}</option>
+        <option value="todo">{{ getTaskStatusEmoji('todo') }} {{ t('filters.status.todo') }}</option>
+        <option value="in_progress">
+          {{ getTaskStatusEmoji('in_progress') }} {{ t('filters.status.inProgress') }}
+        </option>
+        <option value="done">{{ getTaskStatusEmoji('done') }} {{ t('filters.status.done') }}</option>
+        <option value="overdue">{{ getTaskStatusEmoji('overdue') }} {{ t('filters.status.overdue') }}</option>
       </select>
     </label>
 
