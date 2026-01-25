@@ -398,7 +398,7 @@ onMounted(async () => {
 
 .row {
   display: grid;
-  grid-template-columns: 160px 1fr;
+  grid-template-columns: 80px 1fr;
   gap: 12px;
   padding: 10px 0;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
