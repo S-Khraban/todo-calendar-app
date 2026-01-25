@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { supabase } from '@/services/supabaseClient'
 import { useGroupsStore, type GroupMemberItem, type GroupRole } from '@/stores/groups'
 import { GROUP_COLORS } from '@/constants/groupColors'
 
 type GroupColor = (typeof GROUP_COLORS)[number]
+
+const { t } = useI18n()
 
 const props = defineProps<{
   modelValue: boolean
@@ -59,14 +62,14 @@ const loadMembers = async () => {
     const res = await groupsStore.fetchGroupMembers(props.groupId)
 
     if (!res.ok) {
-      localError.value = res.error ?? 'Failed to load members'
+      localError.value = res.error ?? t('groups.errors.loadMembers')
       members.value = []
       return
     }
 
     members.value = res.data
   } catch (e: any) {
-    localError.value = e?.message ?? 'Failed to load members'
+    localError.value = e?.message ?? t('groups.errors.loadMembers')
     members.value = []
   } finally {
     localLoading.value = false
@@ -132,13 +135,13 @@ const saveGroup = async () => {
     })
 
     if (!ok.ok) {
-      localError.value = ok.error ?? 'Failed to update group'
+      localError.value = ok.error ?? t('groups.errors.updateGroup')
       return
     }
 
     emit('updated')
   } catch (e: any) {
-    localError.value = e?.message ?? 'Failed to update group'
+    localError.value = e?.message ?? t('groups.errors.updateGroup')
   } finally {
     localLoading.value = false
   }
@@ -147,7 +150,7 @@ const saveGroup = async () => {
 const setRole = async (userId: string, role: GroupRole) => {
   if (!props.groupId) return
   if (role === 'owner') {
-    localError.value = 'Cannot change owner role. Use transfer ownership.'
+    localError.value = t('groups.errors.cannotSetOwner')
     await loadMembers()
     return
   }
@@ -160,14 +163,14 @@ const setRole = async (userId: string, role: GroupRole) => {
     const res = await groupsStore.setMemberRole(props.groupId, userId, role)
     if (!res.ok) {
       members.value = prev
-      localError.value = res.error ?? 'Failed to update role'
+      localError.value = res.error ?? t('groups.errors.updateRole')
       return
     }
     emit('updated')
     await loadMembers()
   } catch (e: any) {
     members.value = prev
-    localError.value = e?.message ?? 'Failed to update role'
+    localError.value = e?.message ?? t('groups.errors.updateRole')
   }
 }
 
@@ -194,14 +197,14 @@ const confirmTransfer = async () => {
   try {
     const res = await groupsStore.transferOwnership(props.groupId, confirmTransferUserId.value)
     if (!res.ok) {
-      localError.value = res.error ?? 'Failed to transfer ownership'
+      localError.value = res.error ?? t('groups.errors.transferOwnership')
       return
     }
     confirmTransferUserId.value = null
     emit('updated')
     await loadMembers()
   } catch (e: any) {
-    localError.value = e?.message ?? 'Failed to transfer ownership'
+    localError.value = e?.message ?? t('groups.errors.transferOwnership')
   } finally {
     localLoading.value = false
   }
@@ -216,12 +219,12 @@ onMounted(() => {
   <div v-if="isOpen" class="overlay" @click.self="close">
     <div class="modal">
       <header class="head">
-        <div class="title">Group settings</div>
+        <div class="title">{{ t('groups.settings.title') }}</div>
         <button type="button" class="icon-btn" @click="close">✕</button>
       </header>
 
       <div v-if="!canManage" class="error">
-        Only owner/admin can manage this group.
+        {{ t('groups.settings.onlyOwnerAdmin') }}
       </div>
 
       <div v-else>
@@ -232,7 +235,7 @@ onMounted(() => {
             :class="{ active: tab === 'group' }"
             @click="tab = 'group'"
           >
-            Group
+            {{ t('groups.settings.tabs.group') }}
           </button>
           <button
             type="button"
@@ -240,23 +243,23 @@ onMounted(() => {
             :class="{ active: tab === 'members' }"
             @click="tab = 'members'"
           >
-            Members
+            {{ t('groups.settings.tabs.members') }}
           </button>
         </div>
 
         <div v-if="localError" class="error">{{ localError }}</div>
 
         <div v-if="tab === 'group'" class="panel">
-          <label class="label">Group name</label>
+          <label class="label">{{ t('groups.settings.nameLabel') }}</label>
           <input
             class="input"
             type="text"
             :disabled="props.loading || localLoading"
             v-model="nameDraft"
-            placeholder="Group name"
+            :placeholder="t('groups.settings.namePlaceholder')"
           />
 
-          <label class="label" style="margin-top: 12px;">Group color</label>
+          <label class="label" style="margin-top: 12px;">{{ t('groups.settings.colorLabel') }}</label>
           <div class="color-presets">
             <button
               v-for="c in GROUP_COLORS"
@@ -277,7 +280,7 @@ onMounted(() => {
               :disabled="props.loading || localLoading || !nameDraft.trim()"
               @click="saveGroup"
             >
-              Save
+              {{ t('common.actions.save') }}
             </button>
             <button
               type="button"
@@ -285,25 +288,25 @@ onMounted(() => {
               :disabled="props.loading || localLoading"
               @click="loadMembers"
             >
-              Refresh
+              {{ t('common.actions.refresh') }}
             </button>
           </div>
         </div>
 
         <div v-else class="panel">
           <div class="members-head">
-            <div class="muted">Members</div>
+            <div class="muted">{{ t('groups.settings.membersTitle') }}</div>
             <button
               type="button"
               class="btn"
               :disabled="props.loading || localLoading"
               @click="loadMembers"
             >
-              Refresh
+              {{ t('common.actions.refresh') }}
             </button>
           </div>
 
-          <div v-if="localLoading" class="muted">Loading...</div>
+          <div v-if="localLoading" class="muted">{{ t('common.states.loading') }}</div>
 
           <ul v-else class="members">
             <li v-for="m in members" :key="m.userId" class="member">
@@ -320,7 +323,7 @@ onMounted(() => {
                   @change="setRole(m.userId, ($event.target as HTMLSelectElement).value as GroupRole)"
                 >
                   <option v-for="r in roleOptions(m)" :key="r" :value="r">
-                    {{ r }}
+                    {{ t(`groups.roles.${r}`) }}
                   </option>
                 </select>
 
@@ -331,7 +334,7 @@ onMounted(() => {
                   :disabled="props.loading || localLoading"
                   @click="askTransfer(m.userId)"
                 >
-                  Transfer
+                  {{ t('groups.settings.transfer') }}
                 </button>
               </div>
             </li>
@@ -340,15 +343,15 @@ onMounted(() => {
       </div>
 
       <footer class="foot">
-        <button type="button" class="btn" @click="close">Close</button>
+        <button type="button" class="btn" @click="close">{{ t('common.actions.close') }}</button>
       </footer>
     </div>
 
     <div v-if="confirmTransferUserId" class="confirm-overlay" @click.self="cancelTransfer">
       <div class="confirm">
-        <div class="confirm-title">Transfer ownership?</div>
+        <div class="confirm-title">{{ t('groups.settings.transferConfirm.title') }}</div>
         <div class="confirm-text">
-          You will lose owner permissions and become admin.
+          {{ t('groups.settings.transferConfirm.text') }}
         </div>
         <div class="confirm-actions">
           <button
@@ -357,7 +360,7 @@ onMounted(() => {
             :disabled="props.loading || localLoading"
             @click="cancelTransfer"
           >
-            Cancel
+            {{ t('common.actions.cancel') }}
           </button>
           <button
             type="button"
@@ -365,7 +368,7 @@ onMounted(() => {
             :disabled="props.loading || localLoading"
             @click="confirmTransfer"
           >
-            Transfer
+            {{ t('groups.settings.transferConfirm.confirm') }}
           </button>
         </div>
       </div>

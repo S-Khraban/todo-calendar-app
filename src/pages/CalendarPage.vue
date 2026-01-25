@@ -11,6 +11,7 @@ import DayTasksList from '@/components/organisms/DayTasksList.vue'
 import TasksFilters from '@/components/organisms/TasksFilters.vue'
 import { toLocalIso, formatMonthLabel } from '@/utils/date'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import { getTaskStatusEmoji } from '@/shared/taskStatusEmoji'
 
 const { t, locale } = useI18n()
 
@@ -22,7 +23,11 @@ const { visibleCategories } = storeToRefs(categoriesStore)
 const { groups } = storeToRefs(groupsStore)
 
 onMounted(async () => {
-  await Promise.all([categoriesStore.fetchCategories(), groupsStore.fetchMyGroups(), tasksStore.load()])
+  await Promise.all([
+    categoriesStore.fetchCategories(),
+    groupsStore.fetchMyGroups(),
+    tasksStore.load(),
+  ])
 })
 
 const categoryMap = computed<Record<string, string>>(() => {
@@ -56,7 +61,9 @@ const todayIso = toLocalIso(today)
 const currentMonth = ref(new Date(today.getFullYear(), today.getMonth(), 1))
 const selectedDate = ref<string>(todayIso)
 
-const monthLabel = computed(() => formatMonthLabel(currentMonth.value, locale.value))
+const monthLabel = computed(() =>
+  formatMonthLabel(currentMonth.value, locale.value),
+)
 
 const weekDaysShort = computed(() => [
   t('calendar.weekdays.mon'),
@@ -73,9 +80,9 @@ type DayCell = {
   dayNumber: number
   isCurrentMonth: boolean
   isToday: boolean
-  hasInProgress: boolean
-  hasOverdue: boolean
-  showTodo: boolean
+  emojiTodo: string
+  emojiInProgress: string
+  emojiOverdue: string
 }
 
 type UIPriority = 'low' | 'medium' | 'high'
@@ -103,7 +110,8 @@ const filteredTasksByDate = computed<Record<string, Task[]>>(() => {
   return map
 })
 
-const getFilteredTasksForDay = (iso: string) => filteredTasksByDate.value[iso] ?? []
+const getFilteredTasksForDay = (iso: string) =>
+  filteredTasksByDate.value[iso] ?? []
 
 const monthDays = computed<DayCell[]>(() => {
   const year = currentMonth.value.getFullYear()
@@ -115,7 +123,10 @@ const monthDays = computed<DayCell[]>(() => {
   const daysBefore = weekDay - 1
 
   const nextMonthFirst = new Date(year, month + 1, 1)
-  const daysInMonth = Math.round((nextMonthFirst.getTime() - firstOfMonth.getTime()) / (1000 * 60 * 60 * 24))
+  const daysInMonth = Math.round(
+    (nextMonthFirst.getTime() - firstOfMonth.getTime()) /
+      (1000 * 60 * 60 * 24),
+  )
 
   const totalCellsRaw = daysBefore + daysInMonth
   const rows = Math.max(4, Math.ceil(totalCellsRaw / 7))
@@ -137,18 +148,22 @@ const monthDays = computed<DayCell[]>(() => {
     const tasksForDay = getFilteredTasksForDay(iso)
 
     const hasTodo = tasksForDay.some(tt => tt.status === 'todo')
-    const hasInProgress = tasksForDay.some(tt => tt.status === 'in_progress')
-    const hasOverdue = iso < todayIso && tasksForDay.some(tt => tt.status !== 'done')
-    const showTodo = hasTodo && !hasOverdue
+    const hasInProgress = tasksForDay.some(
+      tt => tt.status === 'in_progress',
+    )
+    const hasOverdue =
+      iso < todayIso && tasksForDay.some(tt => tt.status !== 'done')
 
     cells.push({
       iso,
       dayNumber: d.getDate(),
       isCurrentMonth,
       isToday,
-      hasInProgress,
-      hasOverdue,
-      showTodo,
+      emojiTodo: hasTodo && !hasOverdue ? getTaskStatusEmoji('todo') : '',
+      emojiInProgress: hasInProgress
+        ? getTaskStatusEmoji('in_progress')
+        : '',
+      emojiOverdue: hasOverdue ? getTaskStatusEmoji('overdue') : '',
     })
   }
 
@@ -227,7 +242,6 @@ const handleSaveTask = async (payload: SavePayload) => {
     await tasksStore.updateTask(payload)
     return
   }
-
   await tasksStore.addTask(payload)
 }
 
@@ -243,19 +257,24 @@ const handleToggleStatus = (id: string) => {
         :tasks="tasksStore.tasks"
         @update:filteredTasks="onFilteredUpdate($event)"
       />
-
-      <BaseButton size="sm" variant="outline" @click="goToToday">{{ t('calendar.actions.today') }}</BaseButton>
+      <BaseButton size="sm" variant="outline" @click="goToToday">
+        {{ t('calendar.actions.today') }}
+      </BaseButton>
     </div>
 
     <div class="rounded-lg border border-border-soft bg-app-surface shadow-sm p-3 md:p-4">
       <div class="flex items-center justify-between mb-3 text-sm">
-        <BaseButton variant="outline" size="sm" @click="changeMonth(-1)">{{ t('calendar.actions.prev') }}</BaseButton>
+        <BaseButton variant="outline" size="sm" @click="changeMonth(-1)">
+          {{ t('calendar.actions.prev') }}
+        </BaseButton>
 
         <div class="font-semibold capitalize text-text-primary text-sm md:text-base">
           {{ monthLabel }}
         </div>
 
-        <BaseButton variant="outline" size="sm" @click="changeMonth(1)">{{ t('calendar.actions.next') }}</BaseButton>
+        <BaseButton variant="outline" size="sm" @click="changeMonth(1)">
+          {{ t('calendar.actions.next') }}
+        </BaseButton>
       </div>
 
       <div class="calendar-inner">
@@ -294,9 +313,15 @@ const handleToggleStatus = (id: string) => {
             </div>
 
             <div class="calendar-markers">
-              <span v-if="day.hasOverdue" class="calendar-marker" :aria-label="t('calendar.markers.overdue')">🔖</span>
-              <span v-if="day.hasInProgress" class="calendar-marker" :aria-label="t('calendar.markers.inProgress')">▶️</span>
-              <span v-if="day.showTodo" class="calendar-marker" :aria-label="t('calendar.markers.todo')">⚠️</span>
+              <span v-if="day.emojiOverdue" class="calendar-marker">
+                {{ day.emojiOverdue }}
+              </span>
+              <span v-if="day.emojiInProgress" class="calendar-marker">
+                {{ day.emojiInProgress }}
+              </span>
+              <span v-if="day.emojiTodo" class="calendar-marker">
+                {{ day.emojiTodo }}
+              </span>
             </div>
           </button>
         </div>

@@ -69,6 +69,31 @@
       "subtitle": "Invited by {inviter} • {status}",
       "unknown": "Unknown",
       "pending": "Pending"
+    },
+    "settings": {
+      "title": "Group settings",
+      "onlyOwnerAdmin": "Only owner/admin can manage this group.",
+      "tabs": {
+        "group": "Group",
+        "members": "Members"
+      },
+      "nameLabel": "Group name",
+      "namePlaceholder": "Group name",
+      "colorLabel": "Group color",
+      "membersTitle": "Members",
+      "transfer": "Transfer",
+      "transferConfirm": {
+        "title": "Transfer ownership?",
+        "text": "You will lose owner permissions and become admin.",
+        "confirm": "Transfer"
+      }
+    },
+    "errors": {
+      "loadMembers": "Failed to load members",
+      "updateGroup": "Failed to update group",
+      "updateRole": "Failed to update role",
+      "transferOwnership": "Failed to transfer ownership",
+      "cannotSetOwner": "Cannot change owner role. Use transfer ownership."
     }
   },
   "tasks": {
@@ -106,9 +131,20 @@
     "back": "Back",
     "close": "Close",
     "confirm": "Confirm",
-    "actions": "Actions",
+    "actionsLabel": "Actions",
     "processing": "Processing…",
-    "retry": "Retry"
+    "retry": "Retry",
+    "actions": {
+      "save": "Save",
+      "refresh": "Refresh",
+      "close": "Close",
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "delete": "Delete"
+    },
+    "states": {
+      "loading": "Loading…"
+    }
   },
   "navbar": {
     "links": {
