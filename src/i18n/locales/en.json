@@ -61,8 +61,15 @@
       "settings": "Settings",
       "invite": "Invite",
       "delete": "Delete",
+      "leave": "Leave",
       "accept": "Accept",
       "decline": "Decline"
+    },
+    "leave": {
+      "title": "Leave group",
+      "text": "You are about to leave this group.",
+      "warning": "All tasks assigned to you in this group will become unassigned.",
+      "confirm": "Leave group"
     },
     "invites": {
       "title": "Invites ({count})",

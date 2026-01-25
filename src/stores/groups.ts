@@ -49,146 +49,177 @@ export const useGroupsStore = defineStore('groups', () => {
     isLoading.value = true
     error.value = null
 
-    const { data, error: e } = await supabase.rpc('get_my_groups')
+    try {
+      const { data, error: e } = await supabase.rpc('get_my_groups')
 
-    if (e) {
-      error.value = e.message
-      groups.value = []
+      if (e) {
+        error.value = e.message
+        groups.value = []
+        return
+      }
+
+      const rows = (data ?? []) as MyGroupRow[]
+
+      groups.value = rows.map((r) => ({
+        groupId: r.group_id,
+        name: r.name,
+        role: r.role,
+        color: r.color ?? GROUP_COLORS[0],
+      }))
+    } finally {
       isLoading.value = false
-      return
     }
-
-    const rows = (data ?? []) as MyGroupRow[]
-
-    groups.value = rows.map((r) => ({
-      groupId: r.group_id,
-      name: r.name,
-      role: r.role,
-      color: r.color ?? GROUP_COLORS[0],
-    }))
-
-    isLoading.value = false
   }
 
   const fetchInvites = async () => {
     isLoading.value = true
     error.value = null
 
-    const { data, error: e } = await supabase.rpc('get_my_group_invites')
+    try {
+      const { data, error: e } = await supabase.rpc('get_my_group_invites')
 
-    if (e) {
-      error.value = e.message
-      invites.value = []
+      if (e) {
+        error.value = e.message
+        invites.value = []
+        return
+      }
+
+      invites.value = (data ?? []).map((row: any) => ({
+        id: row.id,
+        token: row.token,
+        groupId: row.group_id,
+        groupName: row.group_name ?? 'Unknown',
+        email: row.email,
+        expiresAt: row.expires_at,
+        inviterId: null,
+        inviterEmail: row.inviter_email ?? null,
+        inviterName: row.inviter_name ?? row.inviter_email ?? null,
+      }))
+    } finally {
       isLoading.value = false
-      return
     }
-
-    invites.value = (data ?? []).map((row: any) => ({
-      id: row.id,
-      token: row.token,
-      groupId: row.group_id,
-      groupName: row.group_name ?? 'Unknown',
-      email: row.email,
-      expiresAt: row.expires_at,
-      inviterId: null,
-      inviterEmail: row.inviter_email ?? null,
-      inviterName: row.inviter_name ?? row.inviter_email ?? null,
-    }))
-
-    isLoading.value = false
   }
 
   const createGroup = async (name: string, color?: string) => {
     isLoading.value = true
     error.value = null
 
-    const { data, error: e } = await supabase.rpc('create_group', {
-      p_name: name,
-      p_color: color ?? GROUP_COLORS[0],
-    })
+    try {
+      const { data, error: e } = await supabase.rpc('create_group', {
+        p_name: name,
+        p_color: color ?? GROUP_COLORS[0],
+      })
 
-    if (e) {
-      error.value = e.message
+      if (e) {
+        error.value = e.message
+        return null
+      }
+
+      await fetchMyGroups()
+      return data as string
+    } finally {
       isLoading.value = false
-      return null
     }
-
-    await fetchMyGroups()
-    isLoading.value = false
-    return data as string
   }
 
   const createInvite = async (groupId: string, email: string) => {
     isLoading.value = true
     error.value = null
 
-    const { data, error: e } = await supabase.rpc('create_group_invite', {
-      p_group_id: groupId,
-      p_email: email,
-      p_expires_in_hours: 168,
-    })
+    try {
+      const { data, error: e } = await supabase.rpc('create_group_invite', {
+        p_group_id: groupId,
+        p_email: email,
+        p_expires_in_hours: 168,
+      })
 
-    if (e) {
-      error.value = e.message
+      if (e) {
+        error.value = e.message
+        return null
+      }
+
+      return data as { token: string }
+    } finally {
       isLoading.value = false
-      return null
     }
-
-    isLoading.value = false
-    return data as { token: string }
   }
 
   const acceptInvite = async (token: string) => {
     isLoading.value = true
     error.value = null
 
-    const { error: e } = await supabase.rpc('accept_group_invite', { p_token: token })
+    try {
+      const { error: e } = await supabase.rpc('accept_group_invite', { p_token: token })
 
-    if (e) {
-      error.value = e.message
+      if (e) {
+        error.value = e.message
+        return false
+      }
+
+      await Promise.all([fetchMyGroups(), fetchInvites()])
+      return true
+    } finally {
       isLoading.value = false
-      return false
     }
-
-    await Promise.all([fetchMyGroups(), fetchInvites()])
-    isLoading.value = false
-    return true
   }
 
   const declineInvite = async (token: string) => {
     isLoading.value = true
     error.value = null
 
-    const { error: e } = await supabase.rpc('decline_group_invite', { p_token: token })
+    try {
+      const { error: e } = await supabase.rpc('decline_group_invite', { p_token: token })
 
-    if (e) {
-      error.value = e.message
+      if (e) {
+        error.value = e.message
+        return false
+      }
+
+      await fetchInvites()
+      return true
+    } finally {
       isLoading.value = false
-      return false
     }
-
-    await fetchInvites()
-    isLoading.value = false
-    return true
   }
 
   const deleteGroup = async (groupId: string) => {
     isLoading.value = true
     error.value = null
 
-    const { error: e } = await supabase.from('groups').delete().eq('id', groupId)
+    try {
+      const { error: e } = await supabase.from('groups').delete().eq('id', groupId)
 
-    if (e) {
-      error.value = e.message
+      if (e) {
+        error.value = e.message
+        return false
+      }
+
+      await fetchMyGroups()
+      delete membersByGroupId.value[groupId]
+      return true
+    } finally {
       isLoading.value = false
-      return false
     }
+  }
 
-    groups.value = groups.value.filter((g) => g.groupId !== groupId)
-    delete membersByGroupId.value[groupId]
+  const leaveGroup = async (groupId: string) => {
+    isLoading.value = true
+    error.value = null
 
-    isLoading.value = false
-    return true
+    try {
+      const { error: e } = await supabase.rpc('leave_group', { p_group_id: groupId })
+
+      if (e) {
+        error.value = e.message
+        return false
+      }
+
+      await fetchMyGroups()
+      delete membersByGroupId.value[groupId]
+      return true
+    } finally {
+      isLoading.value = false
+    }
   }
 
   const fetchGroupMembers = async (groupId: string, force = false) => {
@@ -270,6 +301,7 @@ export const useGroupsStore = defineStore('groups', () => {
     acceptInvite,
     declineInvite,
     deleteGroup,
+    leaveGroup,
     fetchGroupMembers,
     updateGroup,
     renameGroup,

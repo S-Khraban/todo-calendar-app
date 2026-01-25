@@ -6,6 +6,7 @@ import { useGroupsStore, type GroupRole } from '@/stores/groups'
 import CreateGroupModal from '@/components/organisms/CreateGroupModal.vue'
 import InviteMemberModal from '@/components/organisms/InviteMemberModal.vue'
 import DeleteGroupModal from '@/components/organisms/DeleteGroupModal.vue'
+import LeaveGroupModal from '@/components/organisms/LeaveGroupModal.vue'
 import GroupSettingsModal from '@/components/organisms/GroupSettingsModal.vue'
 import { GROUP_COLORS } from '@/constants/groupColors'
 import { withAlpha } from '@/utils/color'
@@ -20,6 +21,7 @@ const { t } = useI18n()
 const isCreateOpen = ref(false)
 const isInviteOpen = ref(false)
 const isDeleteOpen = ref(false)
+const isLeaveOpen = ref(false)
 const isSettingsOpen = ref(false)
 
 const activeInviteGroupId = ref<string | null>(null)
@@ -28,6 +30,9 @@ const lastInviteToken = ref<string | null>(null)
 
 const activeDeleteGroupId = ref<string | null>(null)
 const activeDeleteGroupName = ref('')
+
+const activeLeaveGroupId = ref<string | null>(null)
+const activeLeaveGroupName = ref('')
 
 const activeSettingsGroupId = ref<string | null>(null)
 const activeSettingsGroupName = ref('')
@@ -45,6 +50,7 @@ const roleLabel = (role: GroupRole) =>
 const canInvite = (role: GroupRole) => role === 'owner' || role === 'admin'
 const canDelete = (role: GroupRole) => role === 'owner'
 const canManage = (role: GroupRole) => role === 'owner' || role === 'admin'
+const canLeave = (role: GroupRole) => role !== 'owner'
 
 const groupStyle = (color: string) => ({
   backgroundColor: withAlpha(color, 0.1),
@@ -91,6 +97,22 @@ const confirmDelete = async () => {
   }
 }
 
+const openLeave = (groupId: string, groupName: string) => {
+  activeLeaveGroupId.value = groupId
+  activeLeaveGroupName.value = groupName
+  isLeaveOpen.value = true
+}
+
+const confirmLeave = async () => {
+  if (!activeLeaveGroupId.value) return
+  const ok = await groupsStore.leaveGroup(activeLeaveGroupId.value)
+  if (ok) {
+    isLeaveOpen.value = false
+    activeLeaveGroupId.value = null
+    activeLeaveGroupName.value = ''
+  }
+}
+
 const openSettings = (groupId: string, groupName: string, myRole: GroupRole, groupColor: GroupColor) => {
   activeSettingsGroupId.value = groupId
   activeSettingsGroupName.value = groupName
@@ -108,7 +130,10 @@ const declineInvite = async (token: string) => {
 }
 
 const inviteSubtitle = (inv: any) =>
-  t('groups.invites.subtitle', { inviter: inv.inviterEmail || t('groups.invites.unknown'), status: t('groups.invites.pending') })
+  t('groups.invites.subtitle', {
+    inviter: inv.inviterEmail || t('groups.invites.unknown'),
+    status: t('groups.invites.pending'),
+  })
 
 const isMobile = ref(false)
 
@@ -162,12 +187,7 @@ onMounted(() => {
       </div>
 
       <ul v-else class="groups-list">
-        <li
-          v-for="g in groups"
-          :key="g.groupId"
-          class="group-item"
-          :style="groupStyle(g.color)"
-        >
+        <li v-for="g in groups" :key="g.groupId" class="group-item" :style="groupStyle(g.color)">
           <div class="group-left">
             <div class="group-color" :style="{ backgroundColor: g.color }" />
             <div>
@@ -197,6 +217,16 @@ onMounted(() => {
             </button>
 
             <button
+              v-if="canLeave(g.role)"
+              type="button"
+              class="btn btn-danger"
+              :disabled="isLoading"
+              @click="openLeave(g.groupId, g.name)"
+            >
+              {{ t('groups.actions.leave') }}
+            </button>
+
+            <button
               v-if="canDelete(g.role)"
               type="button"
               class="btn btn-danger"
@@ -217,6 +247,12 @@ onMounted(() => {
       :group-name="activeInviteGroupName"
       :invite-link="inviteLink"
       @submit="handleInviteSubmit"
+    />
+    <LeaveGroupModal
+      v-model="isLeaveOpen"
+      :loading="isLoading"
+      :group-name="activeLeaveGroupName"
+      @confirm="confirmLeave"
     />
     <DeleteGroupModal
       v-model="isDeleteOpen"
